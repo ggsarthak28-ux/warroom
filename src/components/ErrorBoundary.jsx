@@ -19,7 +19,7 @@ export class ErrorBoundary extends React.Component {
       return (
         <div className="fatal">
           <div className="fatal-panel">
-            <div className="eyebrow">WarRoom recovered safely</div>
+            <div className="eyebrow">Stock Market recovered safely</div>
             <h1>Something broke inside this view.</h1>
             <p>{this.state.error.message}</p>
             <button className="btn primary" onClick={() => this.setState({ error: null })}>

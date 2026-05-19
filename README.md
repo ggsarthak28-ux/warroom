@@ -1,4 +1,4 @@
-# WarRoom
+# Stock Market
 
 Professional Indian stock-market learning simulator built with React, Vite, Node/Express, WebSocket price plumbing, TradingView Lightweight Charts, provider-backed market data, virtual trading, and backend-only Gemini AI.
 

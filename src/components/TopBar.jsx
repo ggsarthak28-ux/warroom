@@ -15,10 +15,10 @@ export function TopBar({ indices, marketStatus }) {
   return (
     <header className="topbar">
       <div className="brand">
-        <div className="brand-icon">W</div>
+        <div className="brand-icon">S</div>
         <div>
-          <div className="brand-name">WarRoom</div>
-          <div className="brand-tag">AI MARKET SIMULATOR</div>
+          <div className="brand-name">Stock Market</div>
+          <div className="brand-tag">LEARNING SIMULATOR</div>
         </div>
       </div>
 

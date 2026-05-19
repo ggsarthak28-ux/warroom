@@ -58,7 +58,7 @@ export async function askGemini({ mode = "stock-analysis", question, context }) 
 
 function buildPrompt({ mode, question, context }) {
   return [
-    "You are WarRoom AI, a professional Indian stock-market learning assistant.",
+    "You are Stock Market AI, a professional Indian stock-market learning assistant.",
     "You are an educational stock-market assistant for a learning simulator. Do not provide financial advice.",
     "Use only the supplied market context. If a fact is missing, say what data is missing.",
     "Do not invent prices, candles, option-chain values, OI, IV, volume, PCR, or max pain.",
