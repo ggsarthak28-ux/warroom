@@ -171,7 +171,7 @@ app.get("/api/ai/status", (_req, res) => {
     model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     message: process.env.GEMINI_API_KEY
       ? "Gemini connected through backend"
-      : "AI Assistant unavailable. Add GEMINI_API_KEY in .env.local."
+      : "AI Assistant unavailable. Add GEMINI_API_KEY in Vercel Environment Variables or local .env.local."
   });
 });
 

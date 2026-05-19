@@ -31,7 +31,10 @@ export function AiAssistant({ market, portfolio }) {
     const controller = new AbortController();
     fetchAIStatus({ signal: controller.signal })
       .then(setAiStatus)
-      .catch(() => setAiStatus({ connected: false, message: "AI Assistant unavailable. Add GEMINI_API_KEY in .env.local." }));
+      .catch(() => setAiStatus({
+        connected: false,
+        message: "AI Assistant unavailable. The backend AI route is not reachable."
+      }));
     return () => controller.abort();
   }, []);
 
@@ -54,13 +57,14 @@ export function AiAssistant({ market, portfolio }) {
         }, mode);
         setMessages((current) => [...current, { role: "assistant", text: response.answer || response.error }]);
       },
-      () => {
+      (error) => {
         setMessages((current) => [
           ...current,
           {
             role: "assistant",
-            text:
-              "Live AI is unavailable, so use the fallback lens: define your timeframe, identify support/resistance, calculate position size first, then decide whether the setup still deserves risk."
+            text: error?.message
+              ? `AI request failed: ${error.message}`
+              : "Live AI is unavailable, so use the fallback lens: define your timeframe, identify support/resistance, calculate position size first, then decide whether the setup still deserves risk."
           }
         ]);
       }

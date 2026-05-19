@@ -12,10 +12,11 @@ const FEATURE_PROMPTS = {
 export async function askGemini({ mode = "stock-analysis", question, context }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
+    const message = "AI Assistant unavailable. Add GEMINI_API_KEY in Vercel Environment Variables or local .env.local.";
     return {
       ok: false,
-      error: "AI Assistant unavailable. Add GEMINI_API_KEY in .env.local.",
-      answer: "AI Assistant unavailable. Add GEMINI_API_KEY in .env.local.",
+      error: message,
+      answer: message,
       source: "unavailable",
       mode
     };
