@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-const dbPath = resolve("data", "warroom.sqlite");
+const dbPath = process.env.VERCEL ? resolve("/tmp", "warroom.sqlite") : resolve("data", "warroom.sqlite");
 mkdirSync(dirname(dbPath), { recursive: true });
 
 export const db = new DatabaseSync(dbPath);

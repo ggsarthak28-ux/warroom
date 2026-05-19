@@ -88,6 +88,23 @@ INSTRUMENTS_FILE=data/instruments.csv
 
 Never put Gemini keys in React, browser code, or `VITE_` variables. Gemini runs only from the backend through `process.env.GEMINI_API_KEY`.
 
+## Vercel Deployment
+
+Vercel must deploy both the Vite frontend and the `/api/*` serverless routes in this repository. The app uses those routes for instruments, quotes, candles, options placeholders, market status, and Gemini backend calls.
+
+In Vercel, add these Environment Variables:
+
+```env
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+MARKET_DATA_PROVIDER=yahoo
+TWELVE_DATA_API_KEY=
+NSE_INSTRUMENTS_URL=https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv
+BSE_INSTRUMENTS_URL=
+```
+
+On Vercel, WebSocket streaming is disabled unless `VITE_WS_BASE_URL` points to a separate WebSocket backend. The frontend uses `/api/*` polling there, so charts should still load from the provider-backed candle API.
+
 ## If The Link Does Not Open
 
 1. Check the frontend:

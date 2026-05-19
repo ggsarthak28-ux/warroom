@@ -4,11 +4,25 @@ export function connectMarketStream({ symbols, onTick, onState, onError }) {
   let socket = null;
   let reconnectTimer = null;
   let attempt = 0;
+  const explicitWsBase = import.meta.env.VITE_WS_BASE_URL;
+  const canUseRelativeWebSocket = import.meta.env.DEV;
+
+  if (!explicitWsBase && !canUseRelativeWebSocket) {
+    onState?.({
+      status: "connected",
+      source: "HTTP polling",
+      label: "API polling"
+    });
+    return () => {
+      closed = true;
+    };
+  }
 
   const connect = () => {
     if (closed || typeof WebSocket === "undefined") return;
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const url = `${protocol}://${window.location.host}/ws/prices?symbols=${query}`;
+    const base = explicitWsBase || `${protocol}://${window.location.host}`;
+    const url = `${base.replace(/\/$/, "")}/ws/prices?symbols=${query}`;
     onState?.({ status: "connecting", source: "websocket" });
     socket = new WebSocket(url);
 

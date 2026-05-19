@@ -24,7 +24,7 @@ dotenv.config();
 
 const app = express();
 const server = createServer(app);
-const port = Number(process.env.API_PORT || 8787);
+const port = Number(process.env.PORT || process.env.API_PORT || 8787);
 const host = process.env.HOST || process.env.API_HOST || "127.0.0.1";
 
 app.use(cors());
