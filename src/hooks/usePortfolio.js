@@ -69,16 +69,26 @@ export function usePortfolio(stocks) {
       return { ok: false, message: "Market data unavailable. A virtual order needs a real provider price." };
     }
 
-    let result = { ok: true, message: "" };
+    const cost = qty * px;
+    const currentHolding = portfolio.holdings[holdingKey] || { quantity: 0, avgCost: 0, symbol, exchange };
+    if (side === "BUY" && cost > portfolio.cash) {
+      return { ok: false, message: "Insufficient virtual cash for this order." };
+    }
+    if (side === "SELL" && currentHolding.quantity < qty) {
+      return { ok: false, message: "You do not hold enough quantity to sell." };
+    }
+    if (!["BUY", "SELL"].includes(side)) {
+      return { ok: false, message: "Invalid virtual order side." };
+    }
+
+    const result = { ok: true, message: `${side} order placed in virtual portfolio.` };
     setPortfolio((current) => {
       const holdings = { ...current.holdings };
       const existing = holdings[holdingKey] || { quantity: 0, avgCost: 0, symbol, exchange };
-      const cost = qty * px;
       const now = new Date().toISOString();
 
       if (side === "BUY") {
         if (cost > current.cash) {
-          result = { ok: false, message: "Insufficient virtual cash for this order." };
           return current;
         }
         const totalQty = existing.quantity + qty;
@@ -97,7 +107,6 @@ export function usePortfolio(stocks) {
       }
 
       if (existing.quantity < qty) {
-        result = { ok: false, message: "You do not hold enough quantity to sell." };
         return current;
       }
 

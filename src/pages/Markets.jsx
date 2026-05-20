@@ -24,6 +24,7 @@ export function Markets({ market, portfolio }) {
   const watchedRows = market.stocks.filter((stock) => watchlist.includes(stock.key));
   const latestCandle = useMemo(() => latestValidCandle(selectedHistory), [selectedHistory]);
   const selectedVolume = selected.volume == null ? "Volume unavailable" : `Vol ${formatVolume(selected.volume)}`;
+  const canPlaceOrder = Number.isFinite(Number(selected.price)) && Number(trade.quantity) > 0;
 
   const submitOrder = () =>
     safeRun(() => {
@@ -73,7 +74,12 @@ export function Markets({ market, portfolio }) {
           <span>Change</span>
         </div>
         <div className="watchlist">
-          {visibleStocks.map((stock) => (
+          {market.loadingInstruments && <div className="empty-state">Loading instruments...</div>}
+          {market.loadingSearch && <div className="empty-state">Searching stocks...</div>}
+          {!market.loadingInstruments && !market.loadingSearch && !visibleStocks.length && (
+            <div className="empty-state">No matching stocks found.</div>
+          )}
+          {!market.loadingInstruments && !market.loadingSearch && visibleStocks.map((stock) => (
             <button
               type="button"
               className={`wl-row ${stock.key === selected.key ? "sel" : ""} ${stock.flash || ""}`}
@@ -286,7 +292,7 @@ export function Markets({ market, portfolio }) {
             <span>Held Qty</span>
             <b>{holding?.quantity || 0}</b>
           </div>
-          <button className="btn primary full" type="button" onClick={submitOrder}>
+          <button className="btn primary full" type="button" onClick={submitOrder} disabled={!canPlaceOrder}>
             Place Virtual Order
           </button>
           <button className="btn ghost full" type="button" onClick={toggleWatch}>

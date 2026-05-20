@@ -152,6 +152,7 @@ export function saveQuotes(quotes = []) {
   const now = Math.floor(Date.now() / 1000);
   for (const quote of quotes) {
     const key = quote.key || `${quote.exchange || ""}:${quote.symbol || ""}`.toUpperCase();
+    const payload = { ...quote, cachedAt: now };
     upsertQuote.run(
       key,
       quote.timestamp || now,
@@ -160,7 +161,7 @@ export function saveQuotes(quotes = []) {
       quote.changePercent,
       quote.volume,
       quote.source,
-      JSON.stringify(quote)
+      JSON.stringify(payload)
     );
   }
 }
@@ -177,7 +178,8 @@ export function getCachedQuote(symbol) {
     change: payload.change ?? (row.previousClose != null ? row.price - row.previousClose : null),
     volume: row.volume,
     source: `${row.provider || "cache"} cache`,
-    timestamp: row.ts
+    timestamp: row.ts,
+    cachedAt: payload.cachedAt || row.ts
   };
 }
 

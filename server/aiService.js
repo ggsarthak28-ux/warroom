@@ -83,6 +83,7 @@ function fallbackResponse({ mode, context, reason }) {
       : "Learning check: confirm trend, support/resistance, volume, and invalidation before acting.";
 
   return {
+    ok: false,
     answer: [
       `Gemini is temporarily unavailable (${reason}).`,
       `${selected} latest change is ${change}. RSI is ${rsi}.`,

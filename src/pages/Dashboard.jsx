@@ -4,7 +4,7 @@ import { classForChange, formatINR, formatNumber, formatPercent } from "../utils
 
 export function Dashboard({ market, portfolio }) {
   const { selectedHistory, stocks, globals, sectors, topGainers, topLosers } = market;
-  const nifty = stocks.find((stock) => stock.key === "NSE:NIFTY") || stocks[0];
+  const selected = market.selected || stocks.find((stock) => stock.key === "NSE:NIFTY") || stocks[0];
 
   return (
     <div className="dash-grid">
@@ -42,14 +42,14 @@ export function Dashboard({ market, portfolio }) {
           <StockList title="Top Losers" stocks={topLosers} gain={false} />
         </div>
 
-        <Card title={`${nifty?.symbol || "Selected"} - Provider Chart`} badge={formatPercent(nifty?.changePercent)}>
+        <Card title={`${selected?.symbol || "Selected"} - Provider Chart`} badge={formatPercent(selected?.changePercent)}>
           <div className="chart-title-row">
-            <span className="hero-price-small">{formatINR(nifty?.price, 2)}</span>
-            <span className={classForChange(nifty?.changePercent)}>{formatPercent(nifty?.changePercent)}</span>
+            <span className="hero-price-small">{formatINR(selected?.price, 2)}</span>
+            <span className={classForChange(selected?.changePercent)}>{formatPercent(selected?.changePercent)}</span>
           </div>
           <LightweightPriceChart
             data={selectedHistory}
-            tone={(nifty?.changePercent || 0) >= 0 ? "up" : "down"}
+            tone={(selected?.changePercent || 0) >= 0 ? "up" : "down"}
             height={260}
             indicators={["Volume"]}
           />

@@ -4,6 +4,7 @@ import { connectMarketStream } from "../services/realtime";
 import { getDataFreshness, getProviderStatus, labelForDataFreshness, MARKET_SESSION } from "../services/marketStatusService";
 import { instrumentKey, searchStocks, updateOnlyChangedStock } from "../utils/marketMath";
 import { getTimeframe } from "../utils/timeframes";
+import { useDebouncedValue } from "./useDebouncedValue";
 import { useInterval } from "./useInterval";
 
 const DEFAULT_KEYS = ["NSE:NIFTY", "NSE:BANKNIFTY", "BSE:SENSEX"];
@@ -61,6 +62,7 @@ export function useMarketData(marketStatus) {
   const [historyMeta, setHistoryMeta] = useState({});
   const [quoteFailures, setQuoteFailures] = useState(0);
   const [candleFailures, setCandleFailures] = useState(0);
+  const debouncedQuery = useDebouncedValue(query, 280);
 
   const selected = instruments.find((item) => item.key === selectedKey) || placeholderInstrument(selectedKey);
   const selectedHistory = history[selected.key] || [];
@@ -105,20 +107,20 @@ export function useMarketData(marketStatus) {
   }, []);
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!debouncedQuery.trim()) {
       setSearchResults([]);
       return undefined;
     }
     const controller = new AbortController();
     setLoadingSearch(true);
-    apiSearch(query, { signal: controller.signal })
+    apiSearch(debouncedQuery, { signal: controller.signal })
       .then(setSearchResults)
       .catch((error) => {
         if (error.name !== "AbortError") setBanner("Searching stocks failed. Try again.");
       })
       .finally(() => setLoadingSearch(false));
     return () => controller.abort();
-  }, [query]);
+  }, [debouncedQuery]);
 
   useEffect(() => {
     if (!activeSymbols.length) return undefined;
@@ -251,13 +253,17 @@ export function useMarketData(marketStatus) {
 
   const runCompare = useCallback(async () => {
     if (!compareRange.from || !compareRange.to) return;
-    const result = await compareDates({
-      symbol: selected.symbol,
-      exchange: selected.exchange,
-      ...compareRange
-    });
-    setCompareResult(result);
-    if (result.error) setBanner(result.error);
+    try {
+      const result = await compareDates({
+        symbol: selected.symbol,
+        exchange: selected.exchange,
+        ...compareRange
+      });
+      setCompareResult(result);
+      if (result.error) setBanner(result.error);
+    } catch {
+      setBanner("Historical comparison failed. Try another date range.");
+    }
   }, [compareRange, selected.exchange, selected.symbol]);
 
   const toggleIndicator = useCallback((name) => {

@@ -16,13 +16,16 @@ export async function getStock(symbol, exchange) {
 
 export async function getQuotes(requests = []) {
   const instruments = await resolveInstruments(requests);
-  const results = await Promise.all(instruments.map((instrument) => getQuote(instrument.symbol, instrument.exchange)));
+  const results = await mapWithConcurrency(instruments, 8, (instrument) => getQuote(instrument.symbol, instrument.exchange));
   return results;
 }
 
 export async function getQuote(symbol, exchange) {
   const instrument = await getInstrument(symbol, exchange);
   if (!instrument) return unavailableQuote(symbol, exchange, "Invalid symbol");
+
+  const freshCached = freshCachedQuote(instrument);
+  if (freshCached) return freshCached;
 
   try {
     const quote = await fetchQuoteFromProviders(instrument);
@@ -560,6 +563,36 @@ function shouldUseCachedCandles(rangeKey, candles) {
   return Math.floor(Date.now() / 1000) - latest < 20;
 }
 
+function freshCachedQuote(instrument) {
+  const cached = getCachedQuote(instrument.key) || getCachedQuote(instrument.symbol);
+  if (!cached || !shouldUseCachedQuote(cached)) return null;
+  const cleanSource = String(cached.source || providerName()).replace(/\s+cache$/i, "");
+  return {
+    ...cached,
+    key: instrument.key,
+    symbol: instrument.symbol,
+    exchange: instrument.exchange,
+    name: instrument.name,
+    instrumentType: instrument.instrumentType,
+    providerSymbol: providerSymbolFor(instrument, cleanSource),
+    providerName: cached.providerName || cleanSource,
+    source: cleanSource,
+    quoteAvailable: true,
+    candlesAvailable: Boolean(yahooSymbolFor(instrument)),
+    stale: false,
+    delayed: cached.delayed ?? String(cached.source || "").toLowerCase().includes("yahoo")
+  };
+}
+
+function shouldUseCachedQuote(cached) {
+  const timestamp = Number(cached.cachedAt || cached.timestamp);
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return false;
+  const ageSeconds = Math.floor(Date.now() / 1000) - timestamp;
+  if (ageSeconds < 0) return false;
+  const ttl = getMarketStatus().open ? 10 : 300;
+  return ageSeconds <= ttl;
+}
+
 function normalizeYahooRange(range, interval) {
   if (["1m"].includes(interval)) return "1d";
   if (["5m"].includes(interval)) return range === "1d" ? "5d" : range;
@@ -645,4 +678,20 @@ function devLog(label, payload) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function mapWithConcurrency(items, limit, mapper) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(limit, items.length);
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await mapper(items[index], index);
+    }
+  }));
+
+  return results;
 }
