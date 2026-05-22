@@ -11,6 +11,11 @@ import { RGBShiftShader } from "three/examples/jsm/shaders/RGBShiftShader.js";
 
 const TICKERS = ["NIFTY", "SENSEX", "RELIANCE", "BTC", "AAPL", "BANKNIFTY", "TSLA", "INFY", "TCS", "USDINR"];
 const GRID_DEPTHS = [-18, -12, -6, 0, 6];
+const WALL_LAYERS = [
+  { x: -11.4, y: 3.1, z: -17.8, rotation: 0.42, width: 7.2, height: 4.4 },
+  { x: 11.4, y: 3.25, z: -18.6, rotation: -0.42, width: 7.2, height: 4.4 },
+  { x: 0, y: 5.35, z: -22.8, rotation: 0, width: 13.2, height: 3.2 }
+];
 const GREEN = "#18f59b";
 const RED = "#ff5267";
 const CYAN = "#52d8ff";
@@ -107,7 +112,7 @@ function CinematicMarketUniverse({ indices, selected, selectedHistory, marketSta
   const secondary = bullish ? CYAN : "#ff9aa5";
   const sessionOpen = marketStatus?.session?.phase === "open";
 
-  useFrame(({ clock, camera }) => {
+  useFrame(({ clock, camera, pointer }) => {
     if (typeof document !== "undefined" && document.hidden) return;
     const t = clock.getElapsedTime();
     if (shockwaveEventId !== shockwave.current.id) {
@@ -118,11 +123,13 @@ function CinematicMarketUniverse({ indices, selected, selectedHistory, marketSta
 
     if (world.current) {
       world.current.rotation.y = Math.sin(t * 0.08) * 0.04;
+      world.current.position.x = pointer.x * 0.32;
+      world.current.position.y = pointer.y * 0.16;
       world.current.position.z = ((t * 0.82) % 8) - 4;
     }
     if (cameraRig.current) {
-      cameraRig.current.position.x = Math.sin(t * 0.12) * 0.55 + shockPower * Math.sin(t * 48) * 0.07;
-      cameraRig.current.position.y = 5.8 + Math.sin(t * 0.18) * 0.18 + shockPower * Math.cos(t * 52) * 0.05;
+      cameraRig.current.position.x = Math.sin(t * 0.12) * 0.55 + pointer.x * 0.28 + shockPower * Math.sin(t * 48) * 0.07;
+      cameraRig.current.position.y = 5.8 + Math.sin(t * 0.18) * 0.18 + pointer.y * 0.14 + shockPower * Math.cos(t * 52) * 0.05;
       cameraRig.current.position.z = 12.2 - ((t * 0.22) % 2.2) + shockPower * 0.18;
     }
     camera.lookAt(0, 0.8, -8);
@@ -139,6 +146,7 @@ function CinematicMarketUniverse({ indices, selected, selectedHistory, marketSta
       <pointLight position={[5, 5, -10]} intensity={18} color={secondary} distance={20} />
 
       <group ref={world}>
+        <CyberTradingFloor indices={indices} quality={quality} accent={accent} secondary={secondary} bullish={bullish} />
         <FinancialDataGrids accent={accent} />
         <NeonGraphLines candles={selectedHistory} accent={accent} secondary={secondary} />
         <MarketIndexTowers indices={indices} accent={accent} />
@@ -149,6 +157,242 @@ function CinematicMarketUniverse({ indices, selected, selectedHistory, marketSta
       <HudStatus selected={selected} dataStatus={dataStatus} accent={accent} />
       {quality.effects && <PostProcessing quality={quality} accent={accent} />}
     </>
+  );
+}
+
+function CyberTradingFloor({ indices, quality, accent, secondary, bullish }) {
+  return (
+    <group>
+      <HolographicDataWalls quality={quality} accent={accent} secondary={secondary} bullish={bullish} />
+      <ScanningMarketFloor quality={quality} accent={accent} secondary={secondary} />
+      <MarketLightColumns indices={indices} quality={quality} accent={accent} secondary={secondary} />
+      {quality.tier !== "performance" && <DepthLightRails accent={accent} secondary={secondary} />}
+    </group>
+  );
+}
+
+function HolographicDataWalls({ quality, accent, secondary, bullish }) {
+  const group = useRef(null);
+  const wallCells = useMemo(() => {
+    const density = quality.tier === "ultra" ? 54 : quality.tier === "balanced" ? 36 : 20;
+    return WALL_LAYERS.map((wall, wallIndex) =>
+      Array.from({ length: density }, (_, index) => ({
+        x: -wall.width / 2 + deterministic(index, wallIndex + 8) * wall.width,
+        y: -wall.height / 2 + deterministic(index, wallIndex + 12) * wall.height,
+        w: 0.16 + deterministic(index, wallIndex + 16) * 0.72,
+        h: 0.025 + deterministic(index, wallIndex + 22) * 0.09,
+        tone: deterministic(index, wallIndex + 30) > 0.72 ? secondary : accent,
+        delay: deterministic(index, wallIndex + 36) * 4
+      }))
+    );
+  }, [accent, quality.tier, secondary]);
+
+  useFrame(({ clock, pointer }) => {
+    if (typeof document !== "undefined" && document.hidden) return;
+    if (!group.current) return;
+    const t = clock.getElapsedTime();
+    group.current.position.x = pointer.x * 0.42;
+    group.current.rotation.y = Math.sin(t * 0.08) * 0.025;
+  });
+
+  return (
+    <group ref={group}>
+      {WALL_LAYERS.map((wall, wallIndex) => (
+        <group
+          key={`${wall.z}-${wallIndex}`}
+          position={[wall.x, wall.y, wall.z]}
+          rotation={[0, wall.rotation, 0]}
+        >
+          <mesh>
+            <planeGeometry args={[wall.width, wall.height]} />
+            <meshBasicMaterial color="#031120" transparent opacity={quality.tier === "performance" ? 0.24 : 0.36} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, 0, 0.012]}>
+            <planeGeometry args={[wall.width - 0.16, wall.height - 0.16]} />
+            <meshBasicMaterial color={bullish ? "#0c2e2a" : "#2b1019"} transparent opacity={0.12} depthWrite={false} blending={THREE.AdditiveBlending} />
+          </mesh>
+          {Array.from({ length: 7 }).map((_, index) => (
+            <mesh key={`h-${index}`} position={[0, -wall.height / 2 + index * (wall.height / 6), 0.025]}>
+              <boxGeometry args={[wall.width, 0.01, 0.012]} />
+              <meshBasicMaterial color={index % 2 ? secondary : accent} transparent opacity={0.16} depthWrite={false} />
+            </mesh>
+          ))}
+          {Array.from({ length: 10 }).map((_, index) => (
+            <mesh key={`v-${index}`} position={[-wall.width / 2 + index * (wall.width / 9), 0, 0.025]}>
+              <boxGeometry args={[0.01, wall.height, 0.012]} />
+              <meshBasicMaterial color={index % 2 ? secondary : accent} transparent opacity={0.1} depthWrite={false} />
+            </mesh>
+          ))}
+          {wallCells[wallIndex].map((cell, index) => (
+            <DataWallPulse key={`${wallIndex}-${index}`} cell={cell} />
+          ))}
+          <ScanningWallBeam width={wall.width} height={wall.height} accent={accent} secondary={secondary} offset={wallIndex * 0.8} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function DataWallPulse({ cell }) {
+  const mesh = useRef(null);
+
+  useFrame(({ clock }) => {
+    if (!mesh.current) return;
+    const pulse = 0.36 + Math.max(0, Math.sin(clock.getElapsedTime() * 1.8 + cell.delay)) * 0.46;
+    mesh.current.material.opacity = pulse;
+    mesh.current.scale.x = 0.74 + pulse * 0.45;
+  });
+
+  return (
+    <mesh ref={mesh} position={[cell.x, cell.y, 0.045]}>
+      <boxGeometry args={[cell.w, cell.h, 0.018]} />
+      <meshBasicMaterial color={cell.tone} transparent opacity={0.36} depthWrite={false} blending={THREE.AdditiveBlending} />
+    </mesh>
+  );
+}
+
+function ScanningWallBeam({ width, height, accent, secondary, offset }) {
+  const beam = useRef(null);
+
+  useFrame(({ clock }) => {
+    if (!beam.current) return;
+    const t = (clock.getElapsedTime() * 0.34 + offset) % 1;
+    beam.current.position.y = -height / 2 + t * height;
+    beam.current.material.opacity = 0.08 + Math.sin(t * Math.PI) * 0.26;
+  });
+
+  return (
+    <mesh ref={beam} position={[0, -height / 2, 0.06]}>
+      <boxGeometry args={[width, 0.08, 0.022]} />
+      <meshBasicMaterial color={offset % 2 ? secondary : accent} transparent opacity={0.18} depthWrite={false} blending={THREE.AdditiveBlending} />
+    </mesh>
+  );
+}
+
+function ScanningMarketFloor({ quality, accent, secondary }) {
+  const scan = useRef(null);
+  const backScan = useRef(null);
+
+  useFrame(({ clock }) => {
+    if (typeof document !== "undefined" && document.hidden) return;
+    const t = clock.getElapsedTime();
+    if (scan.current) {
+      scan.current.position.z = -23 + ((t * 4.4) % 26);
+      scan.current.material.opacity = quality.tier === "performance" ? 0.18 : 0.32;
+    }
+    if (backScan.current) {
+      backScan.current.position.z = -23 + (((t * 2.7) + 12) % 26);
+      backScan.current.material.opacity = 0.16 + Math.sin(t * 1.2) * 0.04;
+    }
+  });
+
+  return (
+    <group position={[0, -0.2, -10]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.12, -4]}>
+        <planeGeometry args={[32, 34]} />
+        <meshBasicMaterial color="#020813" transparent opacity={0.38} depthWrite={false} />
+      </mesh>
+      <mesh ref={backScan} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, -14]}>
+        <planeGeometry args={[28, 0.18]} />
+        <meshBasicMaterial color={secondary} transparent opacity={0.18} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh ref={scan} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, -18]}>
+        <planeGeometry args={[30, 0.32]} />
+        <meshBasicMaterial color={accent} transparent opacity={0.28} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {Array.from({ length: quality.tier === "performance" ? 8 : 14 }).map((_, index) => (
+        <mesh key={index} position={[-14 + index * 2.15, 0.04, -10]} rotation={[0, 0, 0]}>
+          <boxGeometry args={[0.018, 0.85 + (index % 3) * 0.55, 0.018]} />
+          <meshBasicMaterial color={index % 2 ? secondary : accent} transparent opacity={0.2} depthWrite={false} blending={THREE.AdditiveBlending} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function MarketLightColumns({ indices, quality, accent, secondary }) {
+  const columns = useMemo(() => {
+    const source = indices?.filter(Boolean)?.length ? indices.filter(Boolean) : [
+      { symbol: "NIFTY", changePercent: 0.3 },
+      { symbol: "SENSEX", changePercent: 0.2 },
+      { symbol: "BANK", changePercent: -0.1 }
+    ];
+    const total = quality.tier === "performance" ? 5 : 8;
+    return Array.from({ length: total }, (_, index) => {
+      const item = source[index % source.length] || {};
+      const change = Number(item.changePercent || 0);
+      return {
+        symbol: item.symbol || TICKERS[index % TICKERS.length],
+        change,
+        x: -10.4 + index * (20.8 / Math.max(total - 1, 1)),
+        z: -14 - deterministic(index, 44) * 7,
+        delay: deterministic(index, 49) * 3
+      };
+    });
+  }, [indices, quality.tier]);
+
+  return (
+    <group>
+      {columns.map((column, index) => (
+        <LightColumn key={`${column.symbol}-${index}`} column={column} accent={accent} secondary={secondary} />
+      ))}
+    </group>
+  );
+}
+
+function LightColumn({ column, accent, secondary }) {
+  const group = useRef(null);
+  const positive = column.change >= 0;
+  const color = positive ? accent : RED;
+
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    const t = clock.getElapsedTime();
+    const pulse = 0.75 + Math.sin(t * 1.4 + column.delay) * 0.18;
+    group.current.scale.y = pulse;
+    group.current.position.y = 1.6 + Math.sin(t * 0.8 + column.delay) * 0.14;
+  });
+
+  return (
+    <group ref={group} position={[column.x, 1.7, column.z]}>
+      <mesh>
+        <cylinderGeometry args={[0.055, 0.18, 4.8, 10, 1, true]} />
+        <meshBasicMaterial color={color} transparent opacity={0.2} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh position={[0, -2.38, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.22, 0.44, 24]} />
+        <meshBasicMaterial color={positive ? secondary : RED} transparent opacity={0.38} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <Text position={[0, 2.68, 0]} fontSize={0.16} anchorX="center" anchorY="middle" color={color}>
+        {String(column.symbol).slice(0, 7)}
+      </Text>
+    </group>
+  );
+}
+
+function DepthLightRails({ accent, secondary }) {
+  const rails = useRef(null);
+
+  useFrame(({ clock, pointer }) => {
+    if (!rails.current) return;
+    const t = clock.getElapsedTime();
+    rails.current.position.x = pointer.x * 0.22;
+    rails.current.rotation.z = Math.sin(t * 0.16) * 0.018;
+  });
+
+  return (
+    <group ref={rails} position={[0, 2.8, -16]}>
+      {[-1, 1].map((side) => (
+        <group key={side} position={[side * 8.8, 0, 0]} rotation={[0, side * -0.22, side * 0.08]}>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <mesh key={index} position={[0, index * 0.54, -index * 1.24]} rotation={[0.1, 0, side * 0.32]}>
+              <boxGeometry args={[0.034, 0.034, 6.2]} />
+              <meshBasicMaterial color={index % 2 ? secondary : accent} transparent opacity={0.18} depthWrite={false} blending={THREE.AdditiveBlending} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
   );
 }
 
