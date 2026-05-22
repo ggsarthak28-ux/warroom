@@ -6,7 +6,7 @@ export function Portfolio({ portfolio }) {
 
   return (
     <div className="portfolio-grid">
-      <Card title="Virtual Portfolio Engine" badge="Learning Mode">
+      <Card title="Simulator Cockpit" badge="Learning Mode">
         <div className="stat-grid">
           <Stat label="Equity" value={formatINR(summary.equity, 0)} tone={classForChange(summary.returns)} />
           <Stat label="Virtual Cash" value={formatINR(portfolio.portfolio.cash, 0)} />
@@ -19,7 +19,7 @@ export function Portfolio({ portfolio }) {
         </div>
       </Card>
 
-      <Card title="Holdings">
+      <Card title="Open Positions">
         <div className="table-like">
           <div className="table-head">
             <span>Symbol</span>
@@ -44,7 +44,7 @@ export function Portfolio({ portfolio }) {
         </div>
       </Card>
 
-      <Card title="Order History" className="grow">
+      <Card title="Fill Log" className="grow">
         <div className="trade-list">
           {portfolio.portfolio.orders.length ? (
             portfolio.portfolio.orders.slice(0, 12).map((order) => (

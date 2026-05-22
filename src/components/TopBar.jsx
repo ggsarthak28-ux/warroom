@@ -18,7 +18,7 @@ export function TopBar({ indices, marketStatus }) {
         <div className="brand-icon">S</div>
         <div>
           <div className="brand-name">Stock Market</div>
-          <div className="brand-tag">LEARNING SIMULATOR</div>
+          <div className="brand-tag">MARKET COMMAND</div>
         </div>
       </div>
 

@@ -17,14 +17,14 @@ export function Markets({ market, portfolio }) {
 
   const holding = portfolio.summary.holdings.find((item) => item.key === selected.key);
   const estimated = useMemo(() => {
-    const price = Number(selected.price);
+    const price = selected.price == null ? null : Number(selected.price);
     return Number.isFinite(price) ? Number(trade.quantity || 0) * price : null;
   }, [trade.quantity, selected.price]);
   const isWatched = watchlist.includes(selected.key);
   const watchedRows = market.stocks.filter((stock) => watchlist.includes(stock.key));
   const latestCandle = useMemo(() => latestValidCandle(selectedHistory), [selectedHistory]);
   const selectedVolume = selected.volume == null ? "Volume unavailable" : `Vol ${formatVolume(selected.volume)}`;
-  const canPlaceOrder = Number.isFinite(Number(selected.price)) && Number(trade.quantity) > 0;
+  const canPlaceOrder = selected.price != null && Number.isFinite(Number(selected.price)) && Number(trade.quantity) > 0;
 
   const submitOrder = () =>
     safeRun(() => {
@@ -101,6 +101,15 @@ export function Markets({ market, portfolio }) {
       </Card>
 
       <div className="market-focus">
+        <div className="mobile-desk-search">
+          <input
+            className="search"
+            placeholder="Search any stock, index, or global symbol..."
+            value={market.query}
+            onChange={(event) => market.setQuery(event.target.value)}
+          />
+          {market.loadingSearch && <span>Searching...</span>}
+        </div>
         <section className={`hero ${classForChange(selected.changePercent)}`}>
           <div>
             <div className="eyebrow">{selected.exchange} / {selected.sector}</div>
@@ -120,7 +129,7 @@ export function Markets({ market, portfolio }) {
           </div>
         </section>
 
-        <Card title="TradingView-Style Chart" badge={market.timeframe} className="chart-card-full">
+        <Card title="Market Desk Chart" badge={market.timeframe} className="chart-card-full">
           <div className="provider-warning">
             <span>Free/delayed data</span>
             <span>Intraday candles may be limited</span>
@@ -219,7 +228,7 @@ export function Markets({ market, portfolio }) {
           )}
         </Card>
 
-        <Card title="Historical Compare">
+        <Card title="Time Machine">
           <div className="compare-grid">
             <label className="field">
               From
@@ -252,13 +261,13 @@ export function Markets({ market, portfolio }) {
           )}
         </Card>
 
-        <Card title="Order Book - Level II">
+        <Card title="Depth Feed">
           <div className="empty-state">Order book depth is unavailable on the current free market data provider.</div>
         </Card>
       </div>
 
       <div className="trade-rail">
-        <Card title="Virtual Trade Ticket" badge="Rs 10L">
+        <Card title="Sim Trade Ticket" badge="Rs 10L">
           <div className="segmented">
             {["BUY", "SELL"].map((side) => (
               <button
@@ -336,7 +345,7 @@ function stockStatusLabel(stock) {
 }
 
 function unsupportedCopy(selected, status) {
-  if (Number.isFinite(Number(selected.price)) && status?.candlesAvailable === false) {
+  if (selected.price != null && Number.isFinite(Number(selected.price)) && status?.candlesAvailable === false) {
     return "Quote available, but chart/candle data is unavailable from the current provider.";
   }
   return "This stock exists in the NSE/BSE instrument master, but the current free provider does not support market data for it.";

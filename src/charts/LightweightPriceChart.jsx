@@ -98,8 +98,9 @@ export function LightweightPriceChart({
     containerRef.current.innerHTML = "";
 
     const chart = LightweightCharts.createChart(containerRef.current, {
+      width: containerRef.current.clientWidth,
       height,
-      autoSize: true,
+      autoSize: false,
       layout: {
         background: { color: "transparent" },
         textColor: "rgba(226,232,240,0.72)"

@@ -45,7 +45,7 @@ export function StockList({ title, stocks, gain = true }) {
 export function PortfolioSnapshot({ summary, portfolio }) {
   return (
     <div className="port-card">
-      <div className="port-label">Virtual Portfolio Value</div>
+      <div className="port-label">Simulator Account Value</div>
       <div className="port-val">{formatINR(summary.equity, 0)}</div>
       <div className="port-mini">
         <div className="pm">

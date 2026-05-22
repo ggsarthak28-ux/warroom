@@ -197,7 +197,7 @@ async function enrichSearchResults(results) {
 }
 
 function searchResultPayload(instrument, quote = {}) {
-  const quoteAvailable = Number.isFinite(Number(quote.price));
+  const quoteAvailable = quote.price != null && Number.isFinite(Number(quote.price));
   const availability = getProviderAvailability(instrument.key) || {};
   const candlesAvailable = availability.candlesAvailable ?? quote.candlesAvailable ?? Boolean(instrument.providerSymbol || instrument.yahooSymbol);
   return {

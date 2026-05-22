@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Sidebar } from "./components/Sidebar";
 import { StatusBanner } from "./components/StatusBanner";
@@ -29,6 +29,10 @@ const PAGES = {
   ai: AiAssistant
 };
 
+const TradingFloor3D = lazy(() =>
+  import("./components/TradingFloor3D").then((module) => ({ default: module.TradingFloor3D }))
+);
+
 export default function App() {
   const [page, setPage] = useState("dash");
   const marketStatus = useMarketStatus();
@@ -43,10 +47,17 @@ export default function App() {
     [market.stocks]
   );
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+    document.querySelector(".page")?.scrollTo?.({ top: 0, left: 0 });
+  }, [page]);
+
   return (
     <ErrorBoundary>
       <div className="app-shell">
-        <div className="mesh" />
+        <Suspense fallback={<div className="three-shell" aria-hidden="true"><div className="three-fallback-grid" /></div>}>
+          <TradingFloor3D indices={indices} marketStatus={marketStatus} selected={market.selected} />
+        </Suspense>
         <TopBar indices={indices} marketStatus={marketStatus} dataStatus={market.dataStatus} connection={market.connection} />
         <div className="layout">
           <Sidebar page={page} onPage={setPage} />

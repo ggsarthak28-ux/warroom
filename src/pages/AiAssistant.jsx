@@ -6,7 +6,7 @@ import { safeRunAsync } from "../utils/safeRun";
 const WELCOME = {
   role: "assistant",
   text:
-    "Ask me about Nifty, options, price action, FII/DII flows, position sizing, or trading psychology. I will answer as a market learning coach, not as a broker."
+    "Ask me about Nifty, options, price action, position sizing, or trading psychology. I will keep it educational and I will not invent market data."
 };
 
 const AI_MODES = [
@@ -64,7 +64,7 @@ export function AiAssistant({ market, portfolio }) {
             role: "assistant",
             text: error?.message
               ? `AI request failed: ${error.message}`
-              : "Live AI is unavailable, so use the fallback lens: define your timeframe, identify support/resistance, calculate position size first, then decide whether the setup still deserves risk."
+              : "Live AI is unavailable. Quick fallback: define your timeframe, map support/resistance, size the risk first, then decide if the trade is still worth taking."
           }
         ]);
       }
@@ -77,8 +77,8 @@ export function AiAssistant({ market, portfolio }) {
       <div className="ai-header">
         <div className="ai-avatar">AI</div>
         <div>
-          <h2>India Market AI</h2>
-          <p>NSE/BSE - F&O - risk management - trading psychology</p>
+          <h2>Market Coach Console</h2>
+          <p>NSE/BSE learning, risk checks, options concepts, and mindset</p>
         </div>
         <span className="card-badge">{aiStatus.connected ? "Gemini connected" : "Gemini unavailable"}</span>
       </div>
@@ -107,7 +107,7 @@ export function AiAssistant({ market, portfolio }) {
       <div className="chat-area">
         {messages.map((message, index) => (
           <div className={`chat ${message.role}`} key={`${message.role}-${index}`}>
-            {message.role === "assistant" && <div className="chat-from">Market AI</div>}
+            {message.role === "assistant" && <div className="chat-from">Market Coach</div>}
             {message.text}
           </div>
         ))}

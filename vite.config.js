@@ -4,11 +4,12 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   build: {
+    chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
         manualChunks: {
-          react: ["react", "react-dom/client"],
-          charts: ["lightweight-charts"]
+          charts: ["lightweight-charts"],
+          three: ["three", "@react-three/fiber", "@react-three/drei"]
         }
       }
     }

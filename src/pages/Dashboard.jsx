@@ -11,7 +11,7 @@ export function Dashboard({ market, portfolio }) {
       <div className="col">
         <PortfolioSnapshot summary={portfolio.summary} portfolio={portfolio.portfolio} />
 
-        <Card title="Market Data Status" badge={market.connection.label || "Provider"}>
+        <Card title="Feed Status" badge={market.connection.label || "Provider"}>
           <Metric label="Market Session" value={market.marketSession?.label || "MARKET CLOSED"} tone={market.marketSession?.isOpen ? "up" : "neu"} />
           <Metric label="Quote Data" value={market.dataStatus?.quoteLabel || "Data unavailable"} tone={market.dataStatus?.quoteFreshness === "LIVE_DATA" ? "up" : "neu"} />
           <Metric label="Candle Data" value={market.dataStatus?.candleLabel || "Data unavailable"} tone={market.dataStatus?.candleFreshness === "LIVE_DATA" ? "up" : "neu"} />
@@ -24,16 +24,16 @@ export function Dashboard({ market, portfolio }) {
           <Metric label="Data Policy" value="No fake prices" tone="up" />
         </Card>
 
-        <Card title="Market Sentiment">
+        <Card title="Signal Desk">
           <div className="empty-state">Sentiment is unavailable until a real news/sentiment provider is connected.</div>
         </Card>
       </div>
 
       <div className="col main-col">
-        <Card title="AI Daily Brief" badge="Gemini">
+        <Card title="Market Coach Brief" badge="Gemini">
           <p className="brief">
-            Ask Gemini for explanations or risk analysis from the AI screen. Market prices and candles come only from
-            the market data provider, never from AI-generated values.
+            Ask for explanations, risk checks, or learning help from the Market Coach. Prices and candles still come
+            only from the market data provider, never from AI.
           </p>
         </Card>
 
@@ -42,7 +42,7 @@ export function Dashboard({ market, portfolio }) {
           <StockList title="Top Losers" stocks={topLosers} gain={false} />
         </div>
 
-        <Card title={`${selected?.symbol || "Selected"} - Provider Chart`} badge={formatPercent(selected?.changePercent)}>
+        <Card title={`${selected?.symbol || "Selected"} - Live Desk Chart`} badge={formatPercent(selected?.changePercent)}>
           <div className="chart-title-row">
             <span className="hero-price-small">{formatINR(selected?.price, 2)}</span>
             <span className={classForChange(selected?.changePercent)}>{formatPercent(selected?.changePercent)}</span>

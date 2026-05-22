@@ -272,7 +272,7 @@ export function useMarketData(marketStatus) {
     );
   }, []);
 
-  const priced = instruments.filter((item) => Number.isFinite(Number(item.changePercent)));
+  const priced = instruments.filter((item) => hasNumeric(item.changePercent));
   const topGainers = [...priced].sort((a, b) => b.changePercent - a.changePercent).slice(0, 4);
   const topLosers = [...priced].sort((a, b) => a.changePercent - b.changePercent).slice(0, 4);
   const dataStatus = useMemo(() => {
@@ -397,7 +397,7 @@ function chartStatusFromSelection(selected, candles) {
     exchange: selected.exchange,
     providerSymbol: selected.providerSymbol || null,
     providerName: selected.providerName || selected.source || "Yahoo Finance delayed/free chart feed",
-    quoteAvailable: Number.isFinite(Number(selected.price)),
+    quoteAvailable: hasNumeric(selected.price),
     candlesAvailable: Boolean(candles?.length),
     candleCount: candles?.length || 0,
     lastCandleError: null,
@@ -413,7 +413,7 @@ function chartStatusFromPayload(selected, payload) {
     exchange: payload.exchange || selected.exchange,
     providerSymbol: payload.providerSymbol || selected.providerSymbol || null,
     providerName: payload.providerName || payload.source || selected.providerName || selected.source || "Yahoo Finance delayed/free chart feed",
-    quoteAvailable: Number.isFinite(Number(selected.price)),
+    quoteAvailable: hasNumeric(selected.price),
     candlesAvailable: Boolean(candles.length),
     candleCount: payload.candleCount ?? candles.length,
     lastCandleError: payload.lastCandleError || payload.error || null,
@@ -425,7 +425,7 @@ function chartStatusFromPayload(selected, payload) {
 function listForTab(tab, instruments) {
   const byKey = new Map(instruments.map((instrument) => [instrument.key, instrument]));
   const pick = (keys) => keys.map((key) => byKey.get(key)).filter(Boolean);
-  const hasQuote = (instrument) => Number.isFinite(Number(instrument.price));
+  const hasQuote = (instrument) => hasNumeric(instrument.price);
   const isUnsupported = (instrument) => instrument.error || instrument.dataState === "unavailable";
   const hasCandles = (instrument) => instrument.candlesAvailable === true || Boolean(instrument.providerSymbol);
 
@@ -443,4 +443,8 @@ function listForTab(tab, instruments) {
   if (tab === "Chart Available") return instruments.filter((item) => hasQuote(item) && hasCandles(item));
   if (tab === "Unsupported") return instruments.filter(isUnsupported);
   return pick(POPULAR_KEYS);
+}
+
+function hasNumeric(value) {
+  return value != null && Number.isFinite(Number(value));
 }

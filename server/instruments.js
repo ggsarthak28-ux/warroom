@@ -99,12 +99,26 @@ export async function searchInstruments(query, limit = 40) {
   const instruments = await getAllInstruments();
   const q = String(query || "").trim().toLowerCase();
   if (!q) return instruments.slice(0, limit);
-  return instruments
+  const localResults = instruments
     .filter((instrument) =>
       [instrument.symbol, instrument.name, instrument.exchange, instrument.instrumentType, instrument.sector]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q))
     )
+    .sort((a, b) => searchRank(a, q) - searchRank(b, q) || Number(b.isIndex) - Number(a.isIndex) || a.symbol.localeCompare(b.symbol))
+    .slice(0, limit);
+
+  const globalResults = await searchYahooSymbols(query, Math.min(12, limit)).catch((error) => {
+    if (process.env.NODE_ENV !== "production") console.warn("Yahoo global search failed:", error.message);
+    return [];
+  });
+
+  const seen = new Map();
+  for (const item of [...localResults, ...globalResults]) {
+    if (!seen.has(item.key)) seen.set(item.key, item);
+  }
+
+  return [...seen.values()]
     .sort((a, b) => searchRank(a, q) - searchRank(b, q) || Number(b.isIndex) - Number(a.isIndex) || a.symbol.localeCompare(b.symbol))
     .slice(0, limit);
 }
@@ -116,6 +130,8 @@ export async function getInstrument(symbol, exchange) {
   return (
     instruments.find((instrument) => instrument.symbol === s && (!e || instrument.exchange === e)) ||
     instruments.find((instrument) => instrument.symbol === s) ||
+    createProviderBackedInstrument(s, e) ||
+    createGlobalInstrument(s, e) ||
     null
   );
 }
@@ -238,6 +254,118 @@ function normalizeInstrument(instrument) {
     candlesAvailable: Boolean(instrument.providerSymbol || instrument.yahooSymbol),
     fetchedAt: Math.floor(Date.now() / 1000)
   };
+}
+
+async function searchYahooSymbols(query, limit = 10) {
+  const q = String(query || "").trim();
+  if (q.length < 2) return [];
+  const url = new URL("https://query1.finance.yahoo.com/v1/finance/search");
+  url.searchParams.set("q", q);
+  url.searchParams.set("quotesCount", String(limit));
+  url.searchParams.set("newsCount", "0");
+  url.searchParams.set("enableFuzzyQuery", "false");
+  url.searchParams.set("quotesQueryId", "tss_match_phrase_query");
+
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "WarRoom/1.0 provider search",
+      Accept: "application/json"
+    }
+  });
+  if (!response.ok) throw new Error(`Yahoo search HTTP ${response.status}`);
+  const payload = await response.json();
+  return (payload.quotes || [])
+    .map(yahooQuoteToInstrument)
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function yahooQuoteToInstrument(quote) {
+  const providerSymbol = String(quote.symbol || "").trim().toUpperCase();
+  if (!providerSymbol) return null;
+  const symbol = symbolFromYahooProvider(providerSymbol);
+  const exchange = exchangeFromYahooQuote(quote, providerSymbol);
+  const type = instrumentTypeFromYahoo(quote.quoteType);
+  return normalizeInstrument({
+    symbol,
+    exchange,
+    name: quote.shortname || quote.longname || quote.name || symbol,
+    instrumentType: type,
+    token: providerSymbol,
+    lotSize: 1,
+    tickSize: 0.01,
+    sector: exchange === "NSE" || exchange === "BSE" ? "" : "Global",
+    isIndex: String(quote.quoteType || "").toUpperCase() === "INDEX" || providerSymbol.startsWith("^"),
+    yahooSymbol: providerSymbol,
+    providerSymbol
+  });
+}
+
+function createGlobalInstrument(symbol, exchange) {
+  const s = String(symbol || "").trim().toUpperCase();
+  if (!s || ["NSE", "BSE"].includes(exchange)) return null;
+  if (!/^[A-Z0-9.^=-]{1,16}$/.test(s)) return null;
+  return normalizeInstrument({
+    symbol: s,
+    exchange: exchange || "GLOBAL",
+    name: s,
+    instrumentType: s.startsWith("^") ? "Index" : "Global Stock",
+    token: s,
+    lotSize: 1,
+    tickSize: 0.01,
+    sector: "Global",
+    isIndex: s.startsWith("^"),
+    yahooSymbol: s,
+    providerSymbol: s
+  });
+}
+
+function createProviderBackedInstrument(symbol, exchange) {
+  const s = String(symbol || "").trim().toUpperCase();
+  const e = String(exchange || "").trim().toUpperCase();
+  if (!s || !["NSE", "BSE"].includes(e)) return null;
+  if (!/^[A-Z0-9&.-]{1,24}$/.test(s)) return null;
+  return normalizeInstrument({
+    symbol: s,
+    exchange: e,
+    name: s,
+    instrumentType: "Stock",
+    token: `${s}.${e === "BSE" ? "BO" : "NS"}`,
+    lotSize: 1,
+    tickSize: 0.05,
+    sector: "",
+    isIndex: false,
+    yahooSymbol: `${s}.${e === "BSE" ? "BO" : "NS"}`,
+    providerSymbol: `${s}.${e === "BSE" ? "BO" : "NS"}`
+  });
+}
+
+function symbolFromYahooProvider(providerSymbol) {
+  if (providerSymbol === "^NSEI") return "NIFTY";
+  if (providerSymbol === "^NSEBANK") return "BANKNIFTY";
+  if (providerSymbol === "^BSESN") return "SENSEX";
+  return providerSymbol.replace(/\.NS$/i, "").replace(/\.BO$/i, "");
+}
+
+function exchangeFromYahooQuote(quote, providerSymbol) {
+  if (providerSymbol.endsWith(".NS") || quote.exchange === "NSI") return "NSE";
+  if (providerSymbol.endsWith(".BO") || quote.exchange === "BSE") return "BSE";
+  const raw = String(quote.exchDisp || quote.exchange || "GLOBAL").trim().toUpperCase().replace(/\s+/g, "");
+  if (["NMS", "NCM", "NGM", "NASDAQGS", "NASDAQGM", "NASDAQCM"].includes(raw)) return "NASDAQ";
+  if (["NYQ", "NYSE"].includes(raw)) return "NYSE";
+  if (["ASE", "AMEX"].includes(raw)) return "AMEX";
+  if (raw === "SNP") return "INDEX";
+  return raw || "GLOBAL";
+}
+
+function instrumentTypeFromYahoo(type) {
+  const normalized = String(type || "").toUpperCase();
+  if (normalized === "INDEX") return "Index";
+  if (normalized === "ETF") return "ETF";
+  if (normalized === "MUTUALFUND") return "Fund";
+  if (normalized === "CURRENCY") return "Currency";
+  if (normalized === "EQUITY") return "Global Stock";
+  return normalized || "Global Instrument";
 }
 
 function searchRank(instrument, q) {
