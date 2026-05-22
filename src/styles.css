@@ -20,6 +20,34 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(24, 198, 131, 0.55) rgba(2, 5, 12, 0.16);
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background:
+    linear-gradient(180deg, rgba(92, 168, 255, 0.04), rgba(24, 198, 131, 0.03)),
+    rgba(2, 5, 12, 0.2);
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(2, 5, 12, 0.82);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(82, 216, 255, 0.74), rgba(24, 198, 131, 0.78)),
+    rgba(24, 198, 131, 0.56);
+  box-shadow: 0 0 18px rgba(24, 198, 131, 0.22);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgba(125, 231, 186, 0.95), rgba(92, 168, 255, 0.86)),
+    rgba(24, 198, 131, 0.76);
 }
 
 html,
@@ -325,11 +353,42 @@ button {
 }
 
 .content {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.content::after {
+  content: "";
+  position: absolute;
+  top: 48px;
+  right: 5px;
+  bottom: 30px;
+  z-index: 6;
+  width: 2px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, rgba(82, 216, 255, 0.4), rgba(24, 198, 131, 0.5), transparent);
+  opacity: 0.48;
+  animation: edgeRailPulse 3.2s ease-in-out infinite;
+}
+
+.content::before {
+  content: "";
+  position: absolute;
+  top: 54px;
+  right: 3px;
+  z-index: 7;
+  width: 6px;
+  height: 86px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, rgba(125, 231, 186, 0.9), rgba(92, 168, 255, 0.88), transparent);
+  filter: blur(0.3px);
+  animation: edgeRailSlide 4.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
 .ticker-wrap {
@@ -383,30 +442,151 @@ button {
   min-height: 0;
   overflow: auto;
   padding: 14px;
+  scrollbar-width: none;
 }
 
-.status-banner {
+.page::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.status-signal {
+  position: relative;
   margin: 10px 14px 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(245, 184, 75, 0.34);
+  gap: 10px;
+  min-height: 42px;
+  overflow: hidden;
+  padding: 9px 12px;
+  border: 1px solid rgba(82, 216, 255, 0.24);
   border-radius: 8px;
-  color: var(--amber);
-  background: rgba(245, 184, 75, 0.09);
-  font-size: 12px;
-  font-weight: 700;
+  color: var(--text);
+  background:
+    linear-gradient(90deg, rgba(24, 198, 131, 0.12), rgba(92, 168, 255, 0.08), rgba(3, 7, 18, 0.58)),
+    rgba(3, 7, 18, 0.74);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 38px rgba(0, 0, 0, 0.24);
+  animation: signalEnter 420ms ease-out both;
 }
 
-.status-banner button {
-  width: 24px;
-  height: 24px;
+.status-signal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(110deg, transparent 0 34%, rgba(82, 216, 255, 0.18) 44%, rgba(24, 198, 131, 0.2) 52%, transparent 64%),
+    repeating-linear-gradient(90deg, transparent 0 34px, rgba(125, 231, 186, 0.08) 35px 36px);
+  transform: translateX(-100%);
+  animation: signalSlide 4.8s ease-in-out infinite;
+}
+
+.signal-orb {
+  position: relative;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--green-2);
+  box-shadow: 0 0 18px rgba(24, 198, 131, 0.72);
+  animation: signalPulse 1.8s ease-in-out infinite;
+}
+
+.signal-copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.signal-copy b {
+  flex: 0 0 auto;
+  color: var(--green-2);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.signal-copy span {
+  min-width: 0;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-signal button {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--muted);
   cursor: pointer;
+}
+
+.status-signal button:hover {
+  border-color: rgba(125, 231, 186, 0.35);
+  color: var(--text);
+  background: rgba(24, 198, 131, 0.1);
+}
+
+@keyframes signalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes signalSlide {
+  0%,
+  18% {
+    transform: translateX(-100%);
+  }
+  54%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes signalPulse {
+  50% {
+    transform: scale(0.68);
+    opacity: 0.62;
+  }
+}
+
+@keyframes edgeRailPulse {
+  50% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes edgeRailSlide {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.85;
+  }
+  68% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(calc(100vh - 210px));
+    opacity: 0;
+  }
 }
 
 .dash-grid,
