@@ -2,12 +2,31 @@ import { LightweightPriceChart } from "../charts/LightweightPriceChart";
 import { Card, PortfolioSnapshot, StockList } from "../components/Cards";
 import { classForChange, formatINR, formatNumber, formatPercent } from "../utils/format";
 
-export function Dashboard({ market, portfolio }) {
+export function Dashboard({ market, portfolio, onLaunchDesk }) {
   const { selectedHistory, stocks, globals, sectors, topGainers, topLosers } = market;
   const selected = market.selected || stocks.find((stock) => stock.key === "NSE:NIFTY") || stocks[0];
 
   return (
     <div className="dash-grid">
+      <section className="command-hero-panel">
+        <div>
+          <div className="eyebrow">Cinematic market command</div>
+          <h1>Fly through live market depth.</h1>
+          <p>
+            A WebGL trading universe synced to real provider candles. No fake prices, no fake bars, just a sharper
+            way to read the desk.
+          </p>
+        </div>
+        <div className="command-hero-market">
+          <span>{selected?.exchange}:{selected?.symbol}</span>
+          <b>{formatINR(selected?.price, 2)}</b>
+          <em className={classForChange(selected?.changePercent)}>{formatPercent(selected?.changePercent)}</em>
+        </div>
+        <button className="btn primary command-launch" type="button" onClick={onLaunchDesk}>
+          Launch Market Desk
+        </button>
+      </section>
+
       <div className="col">
         <PortfolioSnapshot summary={portfolio.summary} portfolio={portfolio.portfolio} />
 

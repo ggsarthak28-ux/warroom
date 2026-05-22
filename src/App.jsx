@@ -35,6 +35,8 @@ const TradingFloor3D = lazy(() =>
 
 export default function App() {
   const [page, setPage] = useState("dash");
+  const [shockwaveEventId, setShockwaveEventId] = useState(0);
+  const [shockwaveActive, setShockwaveActive] = useState(false);
   const marketStatus = useMarketStatus();
   const market = useMarketData(marketStatus);
   const portfolio = usePortfolio(market.stocks);
@@ -52,11 +54,25 @@ export default function App() {
     document.querySelector(".page")?.scrollTo?.({ top: 0, left: 0 });
   }, [page]);
 
+  function launchMarketDesk() {
+    setShockwaveEventId((eventId) => eventId + 1);
+    setShockwaveActive(true);
+    setPage("markets");
+    window.setTimeout(() => setShockwaveActive(false), 2000);
+  }
+
   return (
     <ErrorBoundary>
-      <div className="app-shell">
+      <div className={`app-shell ${shockwaveActive ? "shockwave-active" : ""}`}>
         <Suspense fallback={<div className="three-shell" aria-hidden="true"><div className="three-fallback-grid" /></div>}>
-          <TradingFloor3D indices={indices} marketStatus={marketStatus} selected={market.selected} />
+          <TradingFloor3D
+            indices={indices}
+            marketStatus={marketStatus}
+            selected={market.selected}
+            selectedHistory={market.selectedHistory}
+            dataStatus={market.dataStatus}
+            shockwaveEventId={shockwaveEventId}
+          />
         </Suspense>
         <TopBar indices={indices} marketStatus={marketStatus} dataStatus={market.dataStatus} connection={market.connection} />
         <div className="layout">
@@ -65,7 +81,7 @@ export default function App() {
             <Ticker stocks={market.stocks.filter((stock) => stock.price != null).slice(0, 30)} />
             <StatusBanner message={market.banner} onClose={() => market.setBanner(null)} />
             <div className="page">
-              <Page market={market} portfolio={portfolio} />
+              <Page market={market} portfolio={portfolio} onLaunchDesk={launchMarketDesk} shockwaveEventId={shockwaveEventId} />
             </div>
           </main>
         </div>

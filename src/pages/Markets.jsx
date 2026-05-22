@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { LightweightPriceChart } from "../charts/LightweightPriceChart";
 import { Card } from "../components/Cards";
+import { FinancialGlobe3D } from "../components/FinancialGlobe3D";
+import { MarketDepth3DChart } from "../components/MarketDepth3DChart";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { classForChange, formatINR, formatPercent, formatVolume, timeIST } from "../utils/format";
 import { safeRun } from "../utils/safeRun";
@@ -8,7 +10,7 @@ import { TIMEFRAMES } from "../utils/timeframes";
 
 const INDICATORS = ["Volume", "SMA", "EMA", "Bollinger", "RSI", "MACD"];
 
-export function Markets({ market, portfolio }) {
+export function Markets({ market, portfolio, shockwaveEventId }) {
   const [trade, setTrade] = useState({ side: "BUY", quantity: 10 });
   const [message, setMessage] = useState("");
   const [watchlist, setWatchlist] = useLocalStorage("warroom-watchlist", ["NSE:NIFTY", "NSE:RELIANCE", "NSE:TCS", "NSE:HDFCBANK"]);
@@ -228,6 +230,15 @@ export function Markets({ market, portfolio }) {
           )}
         </Card>
 
+        <Card title="3D Candle Depth" badge="WebGL Companion" className="depth-card">
+          <MarketDepth3DChart
+            candles={selectedHistory}
+            selected={selected}
+            loading={market.loadingHistory}
+            shockwaveEventId={shockwaveEventId}
+          />
+        </Card>
+
         <Card title="Time Machine">
           <div className="compare-grid">
             <label className="field">
@@ -267,6 +278,10 @@ export function Markets({ market, portfolio }) {
       </div>
 
       <div className="trade-rail">
+        <Card title="Global Flow Globe" badge="Drag">
+          <FinancialGlobe3D selected={selected} marketStatus={market.marketSession} shockwaveEventId={shockwaveEventId} />
+        </Card>
+
         <Card title="Sim Trade Ticket" badge="Rs 10L">
           <div className="segmented">
             {["BUY", "SELL"].map((side) => (

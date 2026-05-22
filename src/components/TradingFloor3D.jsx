@@ -1,22 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, PerspectiveCamera } from "@react-three/drei";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { PerspectiveCamera, Text } from "@react-three/drei";
 import * as THREE from "three";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { BokehPass } from "three/examples/jsm/postprocessing/BokehPass.js";
+import { RGBShiftShader } from "three/examples/jsm/shaders/RGBShiftShader.js";
 
-const SECTOR_BLOCKS = [
-  ["IT", -9, -7, 1.4, "#5ca8ff"],
-  ["BANK", -5, -8, 2.1, "#18c683"],
-  ["ENERGY", -1, -7, 1.7, "#f5b84b"],
-  ["AUTO", 3, -8, 1.3, "#ff7a66"],
-  ["PHARMA", 7, -7, 1.6, "#9d7bff"],
-  ["FMCG", 10, -9, 1.1, "#7ee7ba"]
-];
-
-const RAILS = [
-  { y: 4.8, z: -5.8, speed: 0.18, color: "#18c683" },
-  { y: 3.5, z: -9.2, speed: -0.12, color: "#5ca8ff" },
-  { y: 2.4, z: -12.4, speed: 0.1, color: "#f5b84b" }
-];
+const TICKERS = ["NIFTY", "SENSEX", "RELIANCE", "BTC", "AAPL", "BANKNIFTY", "TSLA", "INFY", "TCS", "USDINR"];
+const GRID_DEPTHS = [-18, -12, -6, 0, 6];
+const GREEN = "#18f59b";
+const RED = "#ff5267";
+const CYAN = "#52d8ff";
 
 function supportsWebGL() {
   if (typeof window === "undefined") return false;
@@ -32,204 +29,420 @@ function supportsWebGL() {
   }
 }
 
-export function TradingFloor3D({ indices = [], marketStatus, selected }) {
+function detectQuality() {
+  if (typeof window === "undefined") return { tier: "performance", dpr: 1, particles: 700, effects: false, tickerCount: 5 };
+  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  const narrow = window.innerWidth < 760;
+  const highDpr = window.devicePixelRatio >= 2;
+  if (reduced || narrow) return { tier: "performance", dpr: 1, particles: 720, effects: false, tickerCount: 5 };
+  if (highDpr || window.innerWidth < 1280) return { tier: "balanced", dpr: 1.2, particles: 1300, effects: true, tickerCount: 7 };
+  return { tier: "ultra", dpr: 1.45, particles: 2200, effects: true, tickerCount: 10 };
+}
+
+function trendFrom(selected, indices) {
+  const values = [selected?.changePercent, ...(indices || []).map((item) => item?.changePercent)]
+    .map(Number)
+    .filter(Number.isFinite);
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+export function TradingFloor3D({
+  indices = [],
+  selected,
+  selectedHistory = [],
+  marketStatus,
+  dataStatus,
+  shockwaveEventId = 0
+}) {
   const [enabled, setEnabled] = useState(false);
+  const [quality, setQuality] = useState(() => detectQuality());
 
   useEffect(() => {
     setEnabled(supportsWebGL());
+    const onResize = () => setQuality(detectQuality());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  const trend = trendFrom(selected, indices);
+  const mood = trend >= 0 ? "bullish" : "bearish";
+
   return (
-    <div className="three-shell" aria-hidden="true">
+    <div className={`three-shell three-${quality.tier} three-${mood}`} aria-hidden="true">
       <div className="three-fallback-grid" />
       {enabled && (
         <Canvas
-          dpr={[1, 1.45]}
+          dpr={[1, quality.dpr]}
           frameloop="always"
+          shadows={quality.tier !== "performance" ? { type: THREE.PCFShadowMap } : false}
           gl={{
             alpha: true,
-            antialias: true,
+            antialias: quality.tier !== "performance",
             powerPreference: "high-performance"
           }}
         >
-          <TradingFloorScene indices={indices} marketStatus={marketStatus} selected={selected} />
+          <CinematicMarketUniverse
+            indices={indices}
+            selected={selected}
+            selectedHistory={selectedHistory}
+            marketStatus={marketStatus}
+            dataStatus={dataStatus}
+            quality={quality}
+            trend={trend}
+            shockwaveEventId={shockwaveEventId}
+          />
         </Canvas>
       )}
     </div>
   );
 }
 
-function TradingFloorScene({ indices, marketStatus, selected }) {
-  const sceneRef = useRef(null);
+function CinematicMarketUniverse({ indices, selected, selectedHistory, marketStatus, dataStatus, quality, trend, shockwaveEventId }) {
+  const world = useRef(null);
   const cameraRig = useRef(null);
-  const phase = marketStatus?.session?.phase || "closed";
-  const isOpen = phase === "open";
-  const accent = isOpen ? "#18c683" : phase === "pre" ? "#f5b84b" : "#ff5f6f";
+  const shockwave = useRef({ id: 0, startedAt: -100 });
+  const bullish = trend >= 0;
+  const accent = bullish ? GREEN : RED;
+  const secondary = bullish ? CYAN : "#ff9aa5";
+  const sessionOpen = marketStatus?.session?.phase === "open";
 
   useFrame(({ clock, camera }) => {
     if (typeof document !== "undefined" && document.hidden) return;
     const t = clock.getElapsedTime();
-    if (sceneRef.current) {
-      sceneRef.current.rotation.y = Math.sin(t * 0.11) * 0.025;
+    if (shockwaveEventId !== shockwave.current.id) {
+      shockwave.current = { id: shockwaveEventId, startedAt: t };
+    }
+    const shockAge = t - shockwave.current.startedAt;
+    const shockPower = shockAge >= 0 && shockAge < 2 ? 1 - shockAge / 2 : 0;
+
+    if (world.current) {
+      world.current.rotation.y = Math.sin(t * 0.08) * 0.04;
+      world.current.position.z = ((t * 0.82) % 8) - 4;
     }
     if (cameraRig.current) {
-      cameraRig.current.position.x = Math.sin(t * 0.08) * 0.45;
-      cameraRig.current.position.y = Math.sin(t * 0.12) * 0.18;
+      cameraRig.current.position.x = Math.sin(t * 0.12) * 0.55 + shockPower * Math.sin(t * 48) * 0.07;
+      cameraRig.current.position.y = 5.8 + Math.sin(t * 0.18) * 0.18 + shockPower * Math.cos(t * 52) * 0.05;
+      cameraRig.current.position.z = 12.2 - ((t * 0.22) % 2.2) + shockPower * 0.18;
     }
-    camera.lookAt(0, 0.8, -7);
+    camera.lookAt(0, 0.8, -8);
   });
 
   return (
     <>
-      <fog attach="fog" args={["#03060d", 12, 33]} />
-      <PerspectiveCamera ref={cameraRig} makeDefault position={[0, 5.6, 10.8]} fov={43} />
-      <ambientLight intensity={0.52} />
-      <directionalLight position={[4, 8, 6]} intensity={1.3} color="#a9d5ff" />
-      <pointLight position={[-6, 3, -5]} intensity={isOpen ? 22 : 11} color={accent} distance={16} />
-      <group ref={sceneRef}>
-        <MarketFloor accent={accent} />
-        <IndexTowers indices={indices} accent={accent} />
-        <SectorBlocks />
-        <TickerRails selected={selected} />
-        <PulseRing color={accent} />
+      <color attach="background" args={["#02040a"]} />
+      <fog attach="fog" args={["#02040a", 7, 34]} />
+      <PerspectiveCamera ref={cameraRig} makeDefault position={[0, 5.8, 12.2]} fov={48} />
+      <ambientLight intensity={0.35} />
+      <directionalLight position={[4, 8, 5]} intensity={1.5} color="#d6f6ff" castShadow={quality.tier !== "performance"} />
+      <pointLight position={[-5, 3, -4]} intensity={sessionOpen ? 34 : 18} color={accent} distance={22} />
+      <pointLight position={[5, 5, -10]} intensity={18} color={secondary} distance={20} />
+
+      <group ref={world}>
+        <FinancialDataGrids accent={accent} />
+        <NeonGraphLines candles={selectedHistory} accent={accent} secondary={secondary} />
+        <MarketIndexTowers indices={indices} accent={accent} />
+        <HolographicTickerRibbon selected={selected} quality={quality} accent={accent} />
       </group>
+      <MarketParticles count={quality.particles} bullish={bullish} accent={accent} shockwaveEventId={shockwaveEventId} />
+      <ShockwavePulse eventId={shockwaveEventId} accent={accent} />
+      <HudStatus selected={selected} dataStatus={dataStatus} accent={accent} />
+      {quality.effects && <PostProcessing quality={quality} accent={accent} />}
     </>
   );
 }
 
-function MarketFloor({ accent }) {
+function FinancialDataGrids({ accent }) {
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, -7.2]}>
-        <planeGeometry args={[34, 24, 1, 1]} />
-        <meshStandardMaterial color="#050914" metalness={0.35} roughness={0.6} transparent opacity={0.62} />
-      </mesh>
-      <gridHelper args={[34, 34, "#173857", "#0f1a2d"]} position={[0, 0.01, -7.2]} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, -7.2]}>
-        <ringGeometry args={[4.4, 4.48, 96]} />
-        <meshBasicMaterial color={accent} transparent opacity={0.22} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, -7.2]}>
-        <ringGeometry args={[8.2, 8.28, 112]} />
-        <meshBasicMaterial color="#5ca8ff" transparent opacity={0.13} />
-      </mesh>
+      {GRID_DEPTHS.map((z, index) => (
+        <group key={z} position={[0, 0, z - 11]}>
+          <gridHelper args={[28, 28, index % 2 ? CYAN : accent, "#102033"]} position={[0, -0.3, 0]} />
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.32, 0]}>
+            <planeGeometry args={[28, 28]} />
+            <meshBasicMaterial color="#020713" transparent opacity={0.16} />
+          </mesh>
+        </group>
+      ))}
+      {Array.from({ length: 12 }).map((_, index) => (
+        <mesh key={index} position={[-11 + index * 2, 2.4 + (index % 3) * 0.42, -18 + (index % 4) * 5]} rotation={[0, 0, Math.PI / 2]}>
+          <boxGeometry args={[0.018, 3.6, 0.018]} />
+          <meshBasicMaterial color={index % 2 ? CYAN : accent} transparent opacity={0.2} />
+        </mesh>
+      ))}
     </group>
   );
 }
 
-function IndexTowers({ indices, accent }) {
+function NeonGraphLines({ candles, accent, secondary }) {
+  const points = useMemo(() => {
+    const data = validCandles(candles).slice(-42);
+    if (!data.length) {
+      return Array.from({ length: 24 }, (_, index) => {
+        const x = -8 + index * 0.7;
+        const y = 1.2 + Math.sin(index * 0.6) * 0.5 + index * 0.03;
+        return new THREE.Vector3(x, y, -9 - index * 0.16);
+      });
+    }
+    const closes = data.map((candle) => candle.close);
+    const min = Math.min(...closes);
+    const max = Math.max(...closes);
+    const range = Math.max(max - min, max * 0.002, 1);
+    return data.map((candle, index) => {
+      const x = -9 + (index / Math.max(data.length - 1, 1)) * 18;
+      const y = 1 + ((candle.close - min) / range) * 4.2;
+      const z = -15 + Math.sin(index * 0.5) * 0.7;
+      return new THREE.Vector3(x, y, z);
+    });
+  }, [candles]);
+  const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points]);
+
+  return (
+    <group>
+      <line geometry={geometry}>
+        <lineBasicMaterial color={accent} transparent opacity={0.92} linewidth={2} />
+      </line>
+      <line geometry={geometry} position={[0, -0.08, 0.08]}>
+        <lineBasicMaterial color={secondary} transparent opacity={0.36} linewidth={1} />
+      </line>
+      {points.filter((_, index) => index % 5 === 0).map((point, index) => (
+        <mesh key={index} position={point}>
+          <sphereGeometry args={[0.055, 12, 12]} />
+          <meshBasicMaterial color={index % 2 ? secondary : accent} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function MarketIndexTowers({ indices, accent }) {
   const towers = useMemo(() => {
     const defaults = [
-      { symbol: "NIFTY", changePercent: 0, price: null },
-      { symbol: "SENSEX", changePercent: 0, price: null },
-      { symbol: "BANK", changePercent: 0, price: null }
+      { symbol: "NIFTY", changePercent: 0 },
+      { symbol: "SENSEX", changePercent: 0 },
+      { symbol: "BANK", changePercent: 0 }
     ];
-    return defaults.map((fallback, index) => ({
-      ...fallback,
-      ...(indices[index] || {})
-    }));
+    return defaults.map((fallback, index) => ({ ...fallback, ...(indices[index] || {}) }));
   }, [indices]);
 
   return (
-    <group position={[0, 0, -7.1]}>
+    <group position={[0, 0, -8]}>
       {towers.map((item, index) => {
-        const change = Number(item?.changePercent || 0);
-        const height = THREE.MathUtils.clamp(1.7 + Math.abs(change) * 0.5, 1.7, 4.4);
-        const color = change > 0 ? "#18c683" : change < 0 ? "#ff5f6f" : accent;
-        const x = (index - 1) * 3.4;
+        const change = Number(item.changePercent || 0);
+        const color = change > 0 ? GREEN : change < 0 ? RED : accent;
+        const height = THREE.MathUtils.clamp(1.4 + Math.abs(change) * 0.7, 1.4, 4.8);
         return (
-          <Float key={`${item.symbol}-${index}`} speed={1.1 + index * 0.18} floatIntensity={0.08} rotationIntensity={0.05}>
-            <group position={[x, height / 2, 0]}>
-              <mesh>
-                <boxGeometry args={[1.15, height, 1.15]} />
-                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} metalness={0.25} roughness={0.36} transparent opacity={0.72} />
-              </mesh>
-              <mesh position={[0, height / 2 + 0.18, 0]}>
-                <boxGeometry args={[1.42, 0.08, 1.42]} />
-                <meshBasicMaterial color={color} transparent opacity={0.52} />
-              </mesh>
-              <mesh position={[0, -height / 2 - 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[0.72, 0.78, 48]} />
-                <meshBasicMaterial color={color} transparent opacity={0.4} />
-              </mesh>
-            </group>
-          </Float>
+          <group key={`${item.symbol}-${index}`} position={[(index - 1) * 3.1, height / 2, 0]}>
+            <mesh castShadow receiveShadow>
+              <boxGeometry args={[1.08, height, 1.08]} />
+              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.32} metalness={0.45} roughness={0.24} transparent opacity={0.78} />
+            </mesh>
+            <Text position={[0, height / 2 + 0.42, 0]} fontSize={0.22} anchorX="center" anchorY="middle" color={color}>
+              {String(item.symbol || "").slice(0, 8)}
+            </Text>
+          </group>
         );
       })}
     </group>
   );
 }
 
-function SectorBlocks() {
+function HolographicTickerRibbon({ selected, quality, accent }) {
+  const group = useRef(null);
+  const symbols = useMemo(() => {
+    const active = selected?.symbol ? [selected.symbol, ...TICKERS] : TICKERS;
+    return Array.from(new Set(active)).slice(0, quality.tickerCount);
+  }, [quality.tickerCount, selected]);
+
+  useFrame(({ clock }) => {
+    if (typeof document !== "undefined" && document.hidden) return;
+    if (!group.current) return;
+    const t = clock.getElapsedTime();
+    group.current.rotation.y = t * 0.07;
+    group.current.position.y = Math.sin(t * 0.4) * 0.18;
+  });
+
   return (
-    <group>
-      {SECTOR_BLOCKS.map(([name, x, z, height, color], index) => (
-        <group key={name} position={[x, height / 2, z]}>
-          <mesh>
-            <boxGeometry args={[1.75, height, 1.15]} />
-            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} metalness={0.2} roughness={0.52} transparent opacity={0.44} />
-          </mesh>
-          <mesh position={[0, height / 2 + 0.12, 0]}>
-            <boxGeometry args={[1.95, 0.06, 1.32]} />
-            <meshBasicMaterial color={color} transparent opacity={0.32 + index * 0.018} />
-          </mesh>
-        </group>
-      ))}
+    <group ref={group} position={[0, 4.4, -11]}>
+      {symbols.map((symbol, index) => {
+        const angle = (index / symbols.length) * Math.PI * 2;
+        const radius = 7.4;
+        return (
+          <Text
+            key={`${symbol}-${index}`}
+            position={[Math.cos(angle) * radius, Math.sin(index * 0.7) * 0.45, Math.sin(angle) * radius]}
+            rotation={[0, -angle + Math.PI / 2, 0]}
+            fontSize={0.34}
+            anchorX="center"
+            anchorY="middle"
+            color={index % 3 === 0 ? accent : CYAN}
+          >
+            {symbol}
+          </Text>
+        );
+      })}
     </group>
   );
 }
 
-function TickerRails({ selected }) {
-  const railRefs = useRef([]);
-  const symbolBias = (selected?.symbol || "NIFTY").length % 5;
+function MarketParticles({ count, bullish, accent, shockwaveEventId }) {
+  const mesh = useRef(null);
+  const shock = useRef({ id: 0, startedAt: -100 });
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const particles = useMemo(() => {
+    return Array.from({ length: count }, (_, index) => ({
+      x: deterministic(index, 1) * 28 - 14,
+      y: deterministic(index, 2) * 10 - 2,
+      z: deterministic(index, 3) * -28 + 3,
+      size: 0.012 + deterministic(index, 4) * 0.04,
+      speed: 0.08 + deterministic(index, 5) * 0.16
+    }));
+  }, [count]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, pointer }) => {
     if (typeof document !== "undefined" && document.hidden) return;
+    if (!mesh.current) return;
     const t = clock.getElapsedTime();
-    railRefs.current.forEach((rail, index) => {
-      if (!rail) return;
-      rail.position.x = Math.sin(t * RAILS[index].speed + symbolBias) * 2.6;
+    if (shockwaveEventId !== shock.current.id) shock.current = { id: shockwaveEventId, startedAt: t };
+    const shockAge = t - shock.current.startedAt;
+    const shockPower = shockAge >= 0 && shockAge < 1.6 ? 1 - shockAge / 1.6 : 0;
+
+    particles.forEach((particle, index) => {
+      const drift = bullish ? particle.speed * t : -particle.speed * t;
+      const shockRadius = shockPower * 6.5;
+      const direction = index % 2 ? 1 : -1;
+      dummy.position.set(
+        particle.x + pointer.x * 1.2 + direction * shockRadius * deterministic(index, 6),
+        wrap(particle.y + drift + shockRadius * 0.18, -2, 8.5),
+        particle.z + pointer.y * 1.4 - shockRadius * deterministic(index, 7)
+      );
+      const scale = particle.size * (1 + shockPower * 5);
+      dummy.scale.setScalar(scale);
+      dummy.rotation.set(t * 0.2 + index, t * 0.15, 0);
+      dummy.updateMatrix();
+      mesh.current.setMatrixAt(index, dummy.matrix);
     });
+    mesh.current.instanceMatrix.needsUpdate = true;
+    mesh.current.material.color.lerp(new THREE.Color(accent), 0.08);
+    mesh.current.material.opacity = 0.35 + shockPower * 0.4;
   });
 
   return (
-    <group>
-      {RAILS.map((rail, railIndex) => (
-        <group
-          key={rail.z}
-          ref={(node) => {
-            railRefs.current[railIndex] = node;
-          }}
-          position={[0, rail.y, rail.z]}
-        >
-          {Array.from({ length: 9 }).map((_, index) => (
-            <mesh key={`${rail.z}-${index}`} position={[(index - 4) * 2.15, 0, 0]}>
-              <boxGeometry args={[1.34, 0.16, 0.06]} />
-              <meshBasicMaterial color={rail.color} transparent opacity={0.18 + (index % 3) * 0.08} />
-            </mesh>
-          ))}
-        </group>
-      ))}
-    </group>
+    <instancedMesh ref={mesh} args={[undefined, undefined, count]}>
+      <octahedronGeometry args={[1, 0]} />
+      <meshBasicMaterial color={accent} transparent opacity={0.36} depthWrite={false} blending={THREE.AdditiveBlending} />
+    </instancedMesh>
   );
 }
 
-function PulseRing({ color }) {
-  const ringRef = useRef(null);
+function ShockwavePulse({ eventId, accent }) {
+  const ring = useRef(null);
+  const startedAt = useRef(-100);
+  const lastId = useRef(0);
 
   useFrame(({ clock }) => {
-    if (typeof document !== "undefined" && document.hidden) return;
+    if (!ring.current) return;
     const t = clock.getElapsedTime();
-    if (!ringRef.current) return;
-    const scale = 1 + (Math.sin(t * 0.9) + 1) * 0.08;
-    ringRef.current.scale.set(scale, scale, scale);
-    ringRef.current.material.opacity = 0.12 + (Math.sin(t * 0.9) + 1) * 0.05;
+    if (eventId !== lastId.current) {
+      lastId.current = eventId;
+      startedAt.current = t;
+    }
+    const age = t - startedAt.current;
+    const active = age >= 0 && age < 2;
+    const scale = active ? 0.5 + age * 7 : 0.01;
+    ring.current.scale.setScalar(scale);
+    ring.current.material.opacity = active ? Math.max(0, 0.75 - age * 0.38) : 0;
   });
 
   return (
-    <mesh ref={ringRef} position={[0, 1.08, -7.2]} rotation={[Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[5.1, 0.018, 8, 128]} />
-      <meshBasicMaterial color={color} transparent opacity={0.16} />
+    <mesh ref={ring} position={[0, 1.5, -8]} rotation={[Math.PI / 2, 0, 0]}>
+      <torusGeometry args={[0.5, 0.015, 10, 128]} />
+      <meshBasicMaterial color={accent} transparent opacity={0} blending={THREE.AdditiveBlending} />
     </mesh>
   );
+}
+
+function HudStatus({ selected, dataStatus, accent }) {
+  return (
+    <group position={[-6.7, 5.2, -9.5]} rotation={[0.12, 0.2, 0]}>
+      <Text fontSize={0.18} anchorX="left" color={accent}>
+        {selected?.symbol || "NIFTY"} / {dataStatus?.quoteLabel || "DATA"}
+      </Text>
+      <mesh position={[1.9, -0.08, 0]}>
+        <boxGeometry args={[3.8, 0.03, 0.03]} />
+        <meshBasicMaterial color={accent} transparent opacity={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+function PostProcessing({ quality }) {
+  const { gl, scene, camera, size } = useThree();
+  const composer = useRef(null);
+
+  useEffect(() => {
+    const renderPass = new RenderPass(scene, camera);
+    const nextComposer = new EffectComposer(gl);
+    nextComposer.addPass(renderPass);
+    nextComposer.addPass(new UnrealBloomPass(new THREE.Vector2(size.width, size.height), quality.tier === "ultra" ? 0.62 : 0.42, 0.55, 0.18));
+    if (quality.tier === "ultra") {
+      const rgb = new ShaderPass(RGBShiftShader);
+      rgb.uniforms.amount.value = 0.0007;
+      nextComposer.addPass(rgb);
+      const bokeh = new BokehPass(scene, camera, {
+        focus: 12,
+        aperture: 0.00008,
+        maxblur: 0.004
+      });
+      nextComposer.addPass(bokeh);
+    }
+    nextComposer.setSize(size.width, size.height);
+    composer.current = nextComposer;
+    return () => {
+      composer.current?.dispose?.();
+      composer.current = null;
+    };
+  }, [camera, gl, quality.tier, scene, size.height, size.width]);
+
+  useEffect(() => {
+    composer.current?.setSize(size.width, size.height);
+  }, [size.height, size.width]);
+
+  useFrame((_, delta) => {
+    composer.current?.render(delta);
+  }, 1);
+
+  return null;
+}
+
+function validCandles(candles = []) {
+  return candles
+    .map((candle) => ({
+      time: Number(candle.time),
+      open: Number(candle.open),
+      high: Number(candle.high),
+      low: Number(candle.low),
+      close: Number(candle.close)
+    }))
+    .filter((candle) =>
+      Number.isFinite(candle.time) &&
+      Number.isFinite(candle.open) &&
+      Number.isFinite(candle.high) &&
+      Number.isFinite(candle.low) &&
+      Number.isFinite(candle.close) &&
+      candle.high >= candle.open &&
+      candle.high >= candle.close &&
+      candle.low <= candle.open &&
+      candle.low <= candle.close
+    );
+}
+
+function deterministic(index, salt) {
+  const value = Math.sin(index * 127.1 + salt * 311.7) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function wrap(value, min, max) {
+  const range = max - min;
+  return ((((value - min) % range) + range) % range) + min;
 }
