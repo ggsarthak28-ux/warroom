@@ -128,7 +128,6 @@ export function LightweightPriceChart({
 
     const green = "#18c683";
     const red = "#ff5f6f";
-    const blue = "#5ca8ff";
     const amber = "#f5b84b";
     const lineColor = tone === "down" ? red : green;
 
@@ -160,7 +159,7 @@ export function LightweightPriceChart({
       const volume = addSeries(chart, "histogram", {
         priceFormat: { type: "volume" },
         priceScaleId: "",
-        color: "rgba(92,168,255,0.3)"
+        color: "rgba(245,184,75,0.3)"
       });
       volume.priceScale().applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
       volume.setData(
@@ -173,7 +172,7 @@ export function LightweightPriceChart({
     }
 
     if (indicators.includes("SMA") && indicatorData.sma20.length) {
-      const series = addSeries(chart, "line", { color: blue, lineWidth: 1, title: "SMA 20" });
+      const series = addSeries(chart, "line", { color: amber, lineWidth: 1, title: "SMA 20" });
       series.setData(indicatorData.sma20);
     }
 
@@ -183,8 +182,8 @@ export function LightweightPriceChart({
     }
 
     if (indicators.includes("Bollinger") && indicatorData.bands.upper.length && indicatorData.bands.lower.length) {
-      addSeries(chart, "line", { color: "rgba(157,123,255,0.78)", lineWidth: 1, title: "BB Upper" }).setData(indicatorData.bands.upper);
-      addSeries(chart, "line", { color: "rgba(157,123,255,0.38)", lineWidth: 1, title: "BB Lower" }).setData(indicatorData.bands.lower);
+      addSeries(chart, "line", { color: "rgba(245,184,75,0.78)", lineWidth: 1, title: "BB Upper" }).setData(indicatorData.bands.upper);
+      addSeries(chart, "line", { color: "rgba(125,231,186,0.48)", lineWidth: 1, title: "BB Lower" }).setData(indicatorData.bands.lower);
     }
 
     chart.subscribeCrosshairMove?.((param) => {

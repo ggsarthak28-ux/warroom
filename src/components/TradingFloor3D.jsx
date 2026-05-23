@@ -18,7 +18,7 @@ const WALL_LAYERS = [
 ];
 const GREEN = "#18f59b";
 const RED = "#ff5267";
-const CYAN = "#52d8ff";
+const AMBER = "#ffb020";
 
 function supportsWebGL() {
   if (typeof window === "undefined") return false;
@@ -109,7 +109,7 @@ function CinematicMarketUniverse({ indices, selected, selectedHistory, marketSta
   const shockwave = useRef({ id: 0, startedAt: -100 });
   const bullish = trend >= 0;
   const accent = bullish ? GREEN : RED;
-  const secondary = bullish ? CYAN : "#ff9aa5";
+  const secondary = bullish ? AMBER : "#ff9aa5";
   const sessionOpen = marketStatus?.session?.phase === "open";
 
   useFrame(({ clock, camera, pointer }) => {
@@ -401,7 +401,7 @@ function FinancialDataGrids({ accent }) {
     <group>
       {GRID_DEPTHS.map((z, index) => (
         <group key={z} position={[0, 0, z - 11]}>
-          <gridHelper args={[28, 28, index % 2 ? CYAN : accent, "#102033"]} position={[0, -0.3, 0]} />
+          <gridHelper args={[28, 28, index % 2 ? AMBER : accent, "#102033"]} position={[0, -0.3, 0]} />
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.32, 0]}>
             <planeGeometry args={[28, 28]} />
             <meshBasicMaterial color="#020713" transparent opacity={0.16} />
@@ -411,7 +411,7 @@ function FinancialDataGrids({ accent }) {
       {Array.from({ length: 12 }).map((_, index) => (
         <mesh key={index} position={[-11 + index * 2, 2.4 + (index % 3) * 0.42, -18 + (index % 4) * 5]} rotation={[0, 0, Math.PI / 2]}>
           <boxGeometry args={[0.018, 3.6, 0.018]} />
-          <meshBasicMaterial color={index % 2 ? CYAN : accent} transparent opacity={0.2} />
+          <meshBasicMaterial color={index % 2 ? AMBER : accent} transparent opacity={0.2} />
         </mesh>
       ))}
     </group>
@@ -519,7 +519,7 @@ function HolographicTickerRibbon({ selected, quality, accent }) {
             fontSize={0.34}
             anchorX="center"
             anchorY="middle"
-            color={index % 3 === 0 ? accent : CYAN}
+            color={index % 3 === 0 ? accent : AMBER}
           >
             {symbol}
           </Text>

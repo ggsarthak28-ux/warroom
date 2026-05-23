@@ -4,11 +4,11 @@ import { Line, OrbitControls, Text } from "@react-three/drei";
 import * as THREE from "three";
 
 const GREEN = "#18f59b";
-const CYAN = "#52d8ff";
+const AMBER = "#ffb020";
 const CITY_POINTS = [
   { name: "Mumbai", lat: 19.076, lon: 72.8777, tone: GREEN },
-  { name: "New York", lat: 40.7128, lon: -74.006, tone: CYAN },
-  { name: "London", lat: 51.5072, lon: -0.1276, tone: "#8df5ff" },
+  { name: "New York", lat: 40.7128, lon: -74.006, tone: AMBER },
+  { name: "London", lat: 51.5072, lon: -0.1276, tone: "#fff0b8" },
   { name: "Tokyo", lat: 35.6762, lon: 139.6503, tone: "#f5b84b" }
 ];
 
@@ -67,16 +67,16 @@ function GlobeScene({ selected, marketStatus, shockwaveEventId }) {
   return (
     <>
       <ambientLight intensity={0.55} />
-      <directionalLight position={[3, 4, 5]} intensity={1.5} color="#d9fbff" />
+      <directionalLight position={[3, 4, 5]} intensity={1.5} color="#fff2ce" />
       <pointLight position={[-3, 1.5, 2]} intensity={20} color={accent} distance={9} />
       <group ref={globe}>
         <mesh>
           <sphereGeometry args={[1.85, 96, 48]} />
-          <meshStandardMaterial color="#07172b" emissive="#07172b" emissiveIntensity={0.25} metalness={0.28} roughness={0.38} />
+          <meshStandardMaterial color="#07140f" emissive="#07140f" emissiveIntensity={0.25} metalness={0.28} roughness={0.38} />
         </mesh>
         <mesh>
           <sphereGeometry args={[1.875, 48, 24]} />
-          <meshBasicMaterial color={CYAN} wireframe transparent opacity={0.18} />
+          <meshBasicMaterial color={AMBER} wireframe transparent opacity={0.18} />
         </mesh>
         <mesh ref={pulse}>
           <sphereGeometry args={[1.98, 48, 24]} />
@@ -86,7 +86,7 @@ function GlobeScene({ selected, marketStatus, shockwaveEventId }) {
           <CityHotspot key={city.name} city={city} />
         ))}
         {arcs.map((points, index) => (
-          <Line key={index} points={points} color={index % 2 ? CYAN : accent} lineWidth={1.2} transparent opacity={0.7} />
+          <Line key={index} points={points} color={index % 2 ? AMBER : accent} lineWidth={1.2} transparent opacity={0.7} />
         ))}
       </group>
       <Text position={[0, -2.55, 0]} fontSize={0.22} anchorX="center" color={accent}>

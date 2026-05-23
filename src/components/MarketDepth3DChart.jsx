@@ -6,7 +6,7 @@ import { formatINR } from "../utils/format";
 
 const GREEN = "#18f59b";
 const RED = "#ff5267";
-const CYAN = "#52d8ff";
+const AMBER = "#ffb020";
 
 export function MarketDepth3DChart({ candles = [], selected, loading = false, shockwaveEventId = 0 }) {
   const normalized = useMemo(() => normalizeCandles(candles).slice(-56), [candles]);
@@ -68,14 +68,14 @@ function DepthChartScene({ candles, selected, shockwaveEventId }) {
       <color attach="background" args={["#030713"]} />
       <fog attach="fog" args={["#030713", 10, 28]} />
       <ambientLight intensity={0.45} />
-      <directionalLight position={[3, 7, 5]} intensity={1.8} color="#d8f7ff" castShadow />
+      <directionalLight position={[3, 7, 5]} intensity={1.8} color="#fff1c2" castShadow />
       <pointLight position={[-4, 3, 2]} intensity={22} color={accent} distance={16} />
       <group ref={group}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, 0]} receiveShadow>
           <planeGeometry args={[13.8, 7.5]} />
           <meshStandardMaterial color="#06101f" metalness={0.35} roughness={0.58} />
         </mesh>
-        <gridHelper args={[14, 14, "#163557", "#0d1a2c"]} position={[0, -0.06, 0]} />
+        <gridHelper args={[14, 14, "#2f2a12", "#152317"]} position={[0, -0.06, 0]} />
         {candles.map((candle, index) => (
           <DepthCandle key={`${candle.time}-${index}`} candle={candle} index={index} count={candles.length} bounds={bounds} />
         ))}
@@ -134,9 +134,9 @@ function PriceRail({ bounds }) {
         <group key={price} position={[0, mapPrice(price, bounds), 0]}>
           <mesh>
             <boxGeometry args={[0.7, 0.012, 0.012]} />
-            <meshBasicMaterial color={CYAN} transparent opacity={0.44} />
+            <meshBasicMaterial color={AMBER} transparent opacity={0.44} />
           </mesh>
-          <Text position={[0.55, 0, 0]} fontSize={0.13} anchorX="left" color="#9fb8d7">
+          <Text position={[0.55, 0, 0]} fontSize={0.13} anchorX="left" color="#d7c99f">
             {formatINR(price, 0)}
           </Text>
         </group>
