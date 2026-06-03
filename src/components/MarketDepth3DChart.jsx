@@ -4,9 +4,9 @@ import { OrbitControls, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { formatINR } from "../utils/format";
 
-const GREEN = "#18f59b";
+const ROSE = "#ff8fab";
 const RED = "#ff5267";
-const AMBER = "#ffb020";
+const GOLD = "#f0b56b";
 
 export function MarketDepth3DChart({ candles = [], selected, loading = false, shockwaveEventId = 0 }) {
   const normalized = useMemo(() => normalizeCandles(candles).slice(-56), [candles]);
@@ -49,7 +49,7 @@ function DepthChartScene({ candles, selected, shockwaveEventId }) {
   const shock = useRef({ id: 0, startedAt: -100 });
   const bounds = useMemo(() => priceBounds(candles), [candles]);
   const bullish = Number(selected?.changePercent || candles.at(-1).close - candles[0].close) >= 0;
-  const accent = bullish ? GREEN : RED;
+  const accent = bullish ? ROSE : RED;
 
   useFrame(({ clock }) => {
     if (typeof document !== "undefined" && document.hidden) return;
@@ -65,17 +65,17 @@ function DepthChartScene({ candles, selected, shockwaveEventId }) {
 
   return (
     <>
-      <color attach="background" args={["#030713"]} />
-      <fog attach="fog" args={["#030713", 10, 28]} />
+      <color attach="background" args={["#fff7f0"]} />
+      <fog attach="fog" args={["#fff7f0", 10, 28]} />
       <ambientLight intensity={0.45} />
       <directionalLight position={[3, 7, 5]} intensity={1.8} color="#fff1c2" castShadow />
       <pointLight position={[-4, 3, 2]} intensity={22} color={accent} distance={16} />
       <group ref={group}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, 0]} receiveShadow>
           <planeGeometry args={[13.8, 7.5]} />
-          <meshStandardMaterial color="#06101f" metalness={0.35} roughness={0.58} />
+          <meshStandardMaterial color="#f4ded9" metalness={0.18} roughness={0.62} />
         </mesh>
-        <gridHelper args={[14, 14, "#2f2a12", "#152317"]} position={[0, -0.06, 0]} />
+        <gridHelper args={[14, 14, "#4a3228", "#281822"]} position={[0, -0.06, 0]} />
         {candles.map((candle, index) => (
           <DepthCandle key={`${candle.time}-${index}`} candle={candle} index={index} count={candles.length} bounds={bounds} />
         ))}
@@ -93,7 +93,7 @@ function DepthCandle({ candle, index, count, bounds }) {
   const body = useRef(null);
   const wick = useRef(null);
   const up = candle.close >= candle.open;
-  const color = up ? GREEN : RED;
+  const color = up ? ROSE : RED;
   const x = -6 + (index / Math.max(count - 1, 1)) * 12;
   const openY = mapPrice(candle.open, bounds);
   const closeY = mapPrice(candle.close, bounds);
@@ -134,7 +134,7 @@ function PriceRail({ bounds }) {
         <group key={price} position={[0, mapPrice(price, bounds), 0]}>
           <mesh>
             <boxGeometry args={[0.7, 0.012, 0.012]} />
-            <meshBasicMaterial color={AMBER} transparent opacity={0.44} />
+            <meshBasicMaterial color={GOLD} transparent opacity={0.44} />
           </mesh>
           <Text position={[0.55, 0, 0]} fontSize={0.13} anchorX="left" color="#d7c99f">
             {formatINR(price, 0)}

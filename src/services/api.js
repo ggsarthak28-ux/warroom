@@ -77,6 +77,15 @@ export async function compareDates(request, { signal } = {}) {
 }
 
 export async function askMarketAI(question, context = {}, mode = "stock-analysis") {
+  if (typeof question === "object" && question !== null) {
+    const response = await fetch(apiUrl("/api/ai/chat"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(question)
+    });
+    return readJson(response);
+  }
+
   const response = await fetch(apiUrl("/api/ai/chat"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },

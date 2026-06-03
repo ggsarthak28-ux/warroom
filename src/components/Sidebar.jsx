@@ -1,13 +1,9 @@
 const PAGES = [
-  { id: "dash", label: "Command", icon: "C", group: "Desk" },
-  { id: "markets", label: "Trading Desk", icon: "T", group: "Desk" },
-  { id: "options", label: "F&O Desk", icon: "O", badge: "F&O", group: "Desk" },
-  { id: "portfolio", label: "Sim Account", icon: "S", group: "Tools" },
-  { id: "tools", label: "Calculators", icon: "C", group: "Tools" },
-  { id: "journal", label: "Journal", icon: "J", group: "Tools" },
-  { id: "learn", label: "Skill Lab", icon: "L", group: "Growth" },
-  { id: "psych", label: "Mindset", icon: "M", group: "Growth" },
-  { id: "ai", label: "Market Coach", icon: "AI", badge: "AI", group: "Growth" }
+  { id: "command", label: "Command", icon: "C", group: "Core" },
+  { id: "markets", label: "Market Desk", icon: "M", group: "Core" },
+  { id: "practice", label: "Practice Lab", icon: "P", group: "Core" },
+  { id: "options", label: "F&O Lab", icon: "O", badge: "Real data", group: "Labs" },
+  { id: "learn", label: "Skill Path", icon: "S", badge: "Coach", group: "Labs" }
 ];
 
 export function Sidebar({ page, onPage }) {
@@ -33,7 +29,7 @@ export function Sidebar({ page, onPage }) {
         );
       })}
       <div className="sidebar-bottom">
-        <div className="mini-note">Practice desk only. No brokerage, no advice, no fake market data.</div>
+        <div className="mini-note">Learning simulator only. Real provider data where available, no brokerage and no fake market values.</div>
       </div>
     </aside>
   );

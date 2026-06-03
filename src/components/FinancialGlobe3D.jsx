@@ -3,13 +3,14 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Line, OrbitControls, Text } from "@react-three/drei";
 import * as THREE from "three";
 
-const GREEN = "#18f59b";
-const AMBER = "#ffb020";
+const ROSE = "#ff8fab";
+const GOLD = "#f0b56b";
+const VIOLET = "#b794ff";
 const CITY_POINTS = [
-  { name: "Mumbai", lat: 19.076, lon: 72.8777, tone: GREEN },
-  { name: "New York", lat: 40.7128, lon: -74.006, tone: AMBER },
+  { name: "Mumbai", lat: 19.076, lon: 72.8777, tone: ROSE },
+  { name: "New York", lat: 40.7128, lon: -74.006, tone: GOLD },
   { name: "London", lat: 51.5072, lon: -0.1276, tone: "#fff0b8" },
-  { name: "Tokyo", lat: 35.6762, lon: 139.6503, tone: "#f5b84b" }
+  { name: "Tokyo", lat: 35.6762, lon: 139.6503, tone: VIOLET }
 ];
 
 export function FinancialGlobe3D({ selected, marketStatus, shockwaveEventId = 0 }) {
@@ -35,7 +36,7 @@ function GlobeScene({ selected, marketStatus, shockwaveEventId }) {
   const pulse = useRef(null);
   const shock = useRef({ id: 0, startedAt: -100 });
   const open = (marketStatus?.session?.phase || marketStatus?.phase) === "open";
-  const accent = Number(selected?.changePercent || 0) >= 0 ? GREEN : "#ff5267";
+  const accent = Number(selected?.changePercent || 0) >= 0 ? ROSE : "#ff5267";
 
   const arcs = useMemo(() => {
     const pairs = [
@@ -72,21 +73,21 @@ function GlobeScene({ selected, marketStatus, shockwaveEventId }) {
       <group ref={globe}>
         <mesh>
           <sphereGeometry args={[1.85, 96, 48]} />
-          <meshStandardMaterial color="#07140f" emissive="#07140f" emissiveIntensity={0.25} metalness={0.28} roughness={0.38} />
+          <meshStandardMaterial color="#f2d8df" emissive="#f0cbd5" emissiveIntensity={0.12} metalness={0.18} roughness={0.45} />
         </mesh>
         <mesh>
           <sphereGeometry args={[1.875, 48, 24]} />
-          <meshBasicMaterial color={AMBER} wireframe transparent opacity={0.18} />
+          <meshBasicMaterial color={GOLD} wireframe transparent opacity={0.18} />
         </mesh>
         <mesh ref={pulse}>
           <sphereGeometry args={[1.98, 48, 24]} />
-          <meshBasicMaterial color={open ? accent : "#8ea0b8"} transparent opacity={0.18} side={THREE.BackSide} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color={open ? accent : "#8b6f7b"} transparent opacity={0.18} side={THREE.BackSide} blending={THREE.AdditiveBlending} />
         </mesh>
         {CITY_POINTS.map((city) => (
           <CityHotspot key={city.name} city={city} />
         ))}
         {arcs.map((points, index) => (
-          <Line key={index} points={points} color={index % 2 ? AMBER : accent} lineWidth={1.2} transparent opacity={0.7} />
+          <Line key={index} points={points} color={index % 2 ? GOLD : accent} lineWidth={1.2} transparent opacity={0.7} />
         ))}
       </group>
       <Text position={[0, -2.55, 0]} fontSize={0.22} anchorX="center" color={accent}>
@@ -113,7 +114,7 @@ function CityHotspot({ city }) {
         <sphereGeometry args={[0.055, 16, 16]} />
         <meshBasicMaterial color={city.tone} />
       </mesh>
-      <Text position={[0, 0.16, 0]} fontSize={0.105} anchorX="center" color="#d7f6ff">
+      <Text position={[0, 0.16, 0]} fontSize={0.105} anchorX="center" color="#fff0dc">
         {city.name}
       </Text>
     </group>

@@ -16,9 +16,10 @@ const WALL_LAYERS = [
   { x: 11.4, y: 3.25, z: -18.6, rotation: -0.42, width: 7.2, height: 4.4 },
   { x: 0, y: 5.35, z: -22.8, rotation: 0, width: 13.2, height: 3.2 }
 ];
-const GREEN = "#18f59b";
+const ROSE = "#ff8fab";
 const RED = "#ff5267";
-const AMBER = "#ffb020";
+const GOLD = "#f0b56b";
+const VIOLET = "#b794ff";
 
 function supportsWebGL() {
   if (typeof window === "undefined") return false;
@@ -108,8 +109,8 @@ function CinematicMarketUniverse({ indices, selected, selectedHistory, marketSta
   const cameraRig = useRef(null);
   const shockwave = useRef({ id: 0, startedAt: -100 });
   const bullish = trend >= 0;
-  const accent = bullish ? GREEN : RED;
-  const secondary = bullish ? AMBER : "#ff9aa5";
+  const accent = bullish ? ROSE : RED;
+  const secondary = bullish ? GOLD : VIOLET;
   const sessionOpen = marketStatus?.session?.phase === "open";
 
   useFrame(({ clock, camera, pointer }) => {
@@ -137,11 +138,11 @@ function CinematicMarketUniverse({ indices, selected, selectedHistory, marketSta
 
   return (
     <>
-      <color attach="background" args={["#02040a"]} />
-      <fog attach="fog" args={["#02040a", 7, 34]} />
+      <color attach="background" args={["#fff7f0"]} />
+      <fog attach="fog" args={["#fff7f0", 7, 34]} />
       <PerspectiveCamera ref={cameraRig} makeDefault position={[0, 5.8, 12.2]} fov={48} />
       <ambientLight intensity={0.35} />
-      <directionalLight position={[4, 8, 5]} intensity={1.5} color="#d6f6ff" castShadow={quality.tier !== "performance"} />
+      <directionalLight position={[4, 8, 5]} intensity={1.45} color="#fff0dc" castShadow={quality.tier !== "performance"} />
       <pointLight position={[-5, 3, -4]} intensity={sessionOpen ? 34 : 18} color={accent} distance={22} />
       <pointLight position={[5, 5, -10]} intensity={18} color={secondary} distance={20} />
 
@@ -154,6 +155,7 @@ function CinematicMarketUniverse({ indices, selected, selectedHistory, marketSta
       </group>
       <MarketParticles count={quality.particles} bullish={bullish} accent={accent} shockwaveEventId={shockwaveEventId} />
       <ShockwavePulse eventId={shockwaveEventId} accent={accent} />
+      <MarketSignalHalo selected={selected} accent={accent} secondary={secondary} eventId={shockwaveEventId} quality={quality} />
       <HudStatus selected={selected} dataStatus={dataStatus} accent={accent} />
       {quality.effects && <PostProcessing quality={quality} accent={accent} />}
     </>
@@ -205,11 +207,11 @@ function HolographicDataWalls({ quality, accent, secondary, bullish }) {
         >
           <mesh>
             <planeGeometry args={[wall.width, wall.height]} />
-            <meshBasicMaterial color="#031120" transparent opacity={quality.tier === "performance" ? 0.24 : 0.36} depthWrite={false} />
+            <meshBasicMaterial color="#f4ded9" transparent opacity={quality.tier === "performance" ? 0.24 : 0.36} depthWrite={false} />
           </mesh>
           <mesh position={[0, 0, 0.012]}>
             <planeGeometry args={[wall.width - 0.16, wall.height - 0.16]} />
-            <meshBasicMaterial color={bullish ? "#0c2e2a" : "#2b1019"} transparent opacity={0.12} depthWrite={false} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color={bullish ? "#f2cbd2" : "#f4d2d5"} transparent opacity={0.18} depthWrite={false} blending={THREE.AdditiveBlending} />
           </mesh>
           {Array.from({ length: 7 }).map((_, index) => (
             <mesh key={`h-${index}`} position={[0, -wall.height / 2 + index * (wall.height / 6), 0.025]}>
@@ -290,7 +292,7 @@ function ScanningMarketFloor({ quality, accent, secondary }) {
     <group position={[0, -0.2, -10]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.12, -4]}>
         <planeGeometry args={[32, 34]} />
-        <meshBasicMaterial color="#020813" transparent opacity={0.38} depthWrite={false} />
+        <meshBasicMaterial color="#f7e7df" transparent opacity={0.46} depthWrite={false} />
       </mesh>
       <mesh ref={backScan} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, -14]}>
         <planeGeometry args={[28, 0.18]} />
@@ -401,17 +403,17 @@ function FinancialDataGrids({ accent }) {
     <group>
       {GRID_DEPTHS.map((z, index) => (
         <group key={z} position={[0, 0, z - 11]}>
-          <gridHelper args={[28, 28, index % 2 ? AMBER : accent, "#102033"]} position={[0, -0.3, 0]} />
+          <gridHelper args={[28, 28, index % 2 ? GOLD : accent, "#34242b"]} position={[0, -0.3, 0]} />
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.32, 0]}>
             <planeGeometry args={[28, 28]} />
-            <meshBasicMaterial color="#020713" transparent opacity={0.16} />
+            <meshBasicMaterial color="#f6e4de" transparent opacity={0.24} />
           </mesh>
         </group>
       ))}
       {Array.from({ length: 12 }).map((_, index) => (
         <mesh key={index} position={[-11 + index * 2, 2.4 + (index % 3) * 0.42, -18 + (index % 4) * 5]} rotation={[0, 0, Math.PI / 2]}>
           <boxGeometry args={[0.018, 3.6, 0.018]} />
-          <meshBasicMaterial color={index % 2 ? AMBER : accent} transparent opacity={0.2} />
+          <meshBasicMaterial color={index % 2 ? GOLD : accent} transparent opacity={0.2} />
         </mesh>
       ))}
     </group>
@@ -473,7 +475,7 @@ function MarketIndexTowers({ indices, accent }) {
     <group position={[0, 0, -8]}>
       {towers.map((item, index) => {
         const change = Number(item.changePercent || 0);
-        const color = change > 0 ? GREEN : change < 0 ? RED : accent;
+        const color = change > 0 ? ROSE : change < 0 ? RED : accent;
         const height = THREE.MathUtils.clamp(1.4 + Math.abs(change) * 0.7, 1.4, 4.8);
         return (
           <group key={`${item.symbol}-${index}`} position={[(index - 1) * 3.1, height / 2, 0]}>
@@ -519,7 +521,7 @@ function HolographicTickerRibbon({ selected, quality, accent }) {
             fontSize={0.34}
             anchorX="center"
             anchorY="middle"
-            color={index % 3 === 0 ? accent : AMBER}
+            color={index % 3 === 0 ? accent : GOLD}
           >
             {symbol}
           </Text>
@@ -603,6 +605,71 @@ function ShockwavePulse({ eventId, accent }) {
       <torusGeometry args={[0.5, 0.015, 10, 128]} />
       <meshBasicMaterial color={accent} transparent opacity={0} blending={THREE.AdditiveBlending} />
     </mesh>
+  );
+}
+
+function MarketSignalHalo({ selected, accent, secondary, eventId, quality }) {
+  const group = useRef(null);
+  const burst = useRef({ id: 0, startedAt: -100 });
+  const labels = useMemo(() => {
+    const symbol = selected?.symbol || "NIFTY";
+    return [
+      `${symbol}`,
+      "TREND",
+      "RISK",
+      "PLAN"
+    ];
+  }, [selected?.symbol]);
+
+  useFrame(({ clock, pointer }) => {
+    if (!group.current) return;
+    const t = clock.getElapsedTime();
+    if (eventId !== burst.current.id) burst.current = { id: eventId, startedAt: t };
+    const age = t - burst.current.startedAt;
+    const pulse = age >= 0 && age < 1.8 ? 1 - age / 1.8 : 0;
+    group.current.rotation.y = t * 0.22 + pointer.x * 0.12;
+    group.current.rotation.x = Math.sin(t * 0.34) * 0.08 + pointer.y * 0.08;
+    group.current.position.y = 2.8 + Math.sin(t * 0.8) * 0.18;
+    group.current.scale.setScalar(1 + pulse * 0.18);
+  });
+
+  if (quality.tier === "performance") return null;
+
+  return (
+    <group ref={group} position={[5.8, 2.8, -8.2]} rotation={[0.12, -0.4, 0]}>
+      {[0, 1, 2].map((index) => (
+        <mesh key={index} rotation={[Math.PI / 2 + index * 0.45, index * 0.34, index * 0.18]}>
+          <torusGeometry args={[1.1 + index * 0.32, 0.012, 10, 120]} />
+          <meshBasicMaterial
+            color={index % 2 ? secondary : accent}
+            transparent
+            opacity={0.38 - index * 0.08}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      ))}
+      {labels.map((label, index) => {
+        const angle = (index / labels.length) * Math.PI * 2;
+        return (
+          <Text
+            key={label}
+            position={[Math.cos(angle) * 1.7, Math.sin(index * 0.9) * 0.35, Math.sin(angle) * 1.7]}
+            rotation={[0, -angle + Math.PI / 2, 0]}
+            fontSize={index === 0 ? 0.22 : 0.15}
+            anchorX="center"
+            anchorY="middle"
+            color={index === 0 ? secondary : accent}
+          >
+            {label}
+          </Text>
+        );
+      })}
+      <mesh>
+        <icosahedronGeometry args={[0.34, 1]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.85} metalness={0.35} roughness={0.2} transparent opacity={0.72} />
+      </mesh>
+    </group>
   );
 }
 

@@ -157,7 +157,7 @@ app.get("/api/options/chain", async (req, res) => {
 app.post("/api/ai", async (req, res) => {
   const question = String(req.body?.question || "").trim();
   const mode = String(req.body?.mode || "stock-analysis");
-  const clientContext = req.body?.context || {};
+  const clientContext = normalizeAIClientContext(req.body || {});
   if (!question && !mode) return res.status(400).json({ error: "Question or mode is required" });
 
   const context = await buildAIContext(clientContext);
@@ -178,7 +178,7 @@ app.get("/api/ai/status", (_req, res) => {
 app.post("/api/ai/chat", async (req, res) => {
   const question = String(req.body?.question || "").trim();
   const mode = String(req.body?.mode || "stock-analysis");
-  const clientContext = req.body?.context || {};
+  const clientContext = normalizeAIClientContext(req.body || {});
   if (!question) return res.status(400).json({ error: "Question is required" });
   const context = await buildAIContext(clientContext);
   const result = await askGemini({ mode, question, context });
@@ -275,27 +275,41 @@ function streamState(quotes = []) {
 }
 
 async function buildAIContext(clientContext) {
-  const symbol = clientContext.selected || clientContext.symbol || "NIFTY";
-  const exchange = clientContext.exchange || "NSE";
+  const selectedContext = clientContext.selectedSymbol || clientContext.marketContext?.selected || {};
+  const symbol =
+    clientContext.selected ||
+    clientContext.symbol ||
+    selectedContext.symbol ||
+    clientContext.marketContext?.symbol ||
+    "NIFTY";
+  const exchange = clientContext.exchange || selectedContext.exchange || clientContext.marketContext?.exchange || "NSE";
   const stock = await getStock(symbol, exchange);
   if (!stock) {
     return {
       asOf: new Date().toISOString(),
+      pageContext: clientContext.pageContext || null,
       marketStatus: getMarketStatus(),
       selected: { symbol, exchange, error: "Invalid symbol" },
       indicators: {},
       candles: [],
-      portfolio: clientContext.portfolio || null,
+      portfolio: clientContext.portfolio || clientContext.portfolioContext || null,
       watchlist: clientContext.watchlist || []
     };
   }
   const [quote] = stock ? await getQuotes([stock.key]) : [];
-  const history = stock ? await getHistory({ symbol: stock.symbol, exchange: stock.exchange, range: clientContext.range || "1mo", interval: clientContext.interval || "1d" }) : { candles: [] };
+  const historyRequest = aiHistoryRequest(clientContext);
+  const history = stock ? await getHistory({
+    symbol: stock.symbol,
+    exchange: stock.exchange,
+    range: historyRequest.range,
+    interval: historyRequest.interval
+  }) : { candles: [] };
   const candles = history.candles.slice(-120);
   const indicators = latestIndicatorSummary(candles);
 
   return {
     asOf: new Date().toISOString(),
+    pageContext: clientContext.pageContext || null,
     marketStatus: getMarketStatus(),
     selected: {
       symbol: stock.symbol,
@@ -318,7 +332,34 @@ async function buildAIContext(clientContext) {
       close: candle.close,
       volume: candle.volume
     })),
-    portfolio: clientContext.portfolio || null,
+    portfolio: clientContext.portfolio || clientContext.portfolioContext || null,
     watchlist: clientContext.watchlist || []
   };
+}
+
+function normalizeAIClientContext(body) {
+  return {
+    ...(body.context || {}),
+    pageContext: body.pageContext || body.context?.pageContext || null,
+    selectedSymbol: body.selectedSymbol || body.context?.selectedSymbol || null,
+    marketContext: body.marketContext || body.context?.marketContext || null,
+    portfolioContext: body.portfolioContext || body.context?.portfolioContext || null
+  };
+}
+
+function aiHistoryRequest(clientContext) {
+  const timeframe = clientContext.marketContext?.timeframe || "";
+  if (["1m", "5m", "15m", "30m"].includes(timeframe)) {
+    return { range: "5d", interval: timeframe };
+  }
+  if (timeframe === "1h") {
+    return { range: "1mo", interval: "60m" };
+  }
+  if (timeframe === "1W") {
+    return { range: "1y", interval: "1wk" };
+  }
+  if (timeframe === "1M") {
+    return { range: "5y", interval: "1mo" };
+  }
+  return { range: clientContext.range || "1mo", interval: clientContext.interval || "1d" };
 }
